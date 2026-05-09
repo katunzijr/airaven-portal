@@ -10,4 +10,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  preview: {
+    host: true,
+    allowedHosts: ['airaven.co.tz']
+  }
 })

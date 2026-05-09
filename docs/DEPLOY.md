@@ -60,7 +60,6 @@ APP_DIR → /var/apps/airaven-portal
 ### Server
 nginx -version
 apt-get install nginx
-ping airaven.co.tz
 apt install -y certbot python3-certbot-nginx
 nano /etc/nginx/sites-available/default
 
@@ -82,5 +81,6 @@ server {
     }
 }
 
+ping airaven.co.tz
 sudo certbot --nginx -d airaven.co.tz
 nginx -t && nginx -s reload
