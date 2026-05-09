@@ -10,8 +10,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+
+  // Required when nginx (or any proxy) forwards Host: airaven.co.tz to `vite preview`.
   preview: {
-    host: true,
-    allowedHosts: ['airaven.co.tz']
-  }
+    allowedHosts: ['airaven.co.tz'],
+  },
+
+  // Same guard on `vite dev` if you open the site via that hostname through a proxy.
+  server: {
+    allowedHosts: ['airaven.co.tz'],
+  },
 })
