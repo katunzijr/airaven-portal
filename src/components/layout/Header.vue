@@ -12,7 +12,7 @@ const mobileMenuOpen = ref(false)
       <div class="flex items-center justify-between h-16">
         <RouterLink to="/" class="flex items-center gap-2.5 shrink-0">
           <div class="w-9 h-9 rounded-md flex items-center justify-center">
-            <img src="/airaven-logo.svg" alt="Airaven Logo" width="32" height="32" />
+            <img src="/airaven-logo.png" alt="Airaven Logo" width="32" height="32" />
           </div>
           <span class="text-xl font-extrabold tracking-tight hidden sm:block"> airaven </span>
         </RouterLink>

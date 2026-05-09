@@ -34,7 +34,7 @@ const footerLinks = {
         <div>
           <RouterLink to="/" class="flex items-center gap-2 mb-4">
             <div class="w-8 h-8 rounded-md flex items-center justify-center">
-              <img src="/airaven-logo.svg" alt="Airaven Logo" width="32" height="32" />
+              <img src="/airaven-logo.png" alt="Airaven Logo" width="32" height="32" />
             </div>
             <span class="text-lg font-extrabold">airaven</span>
           </RouterLink>
