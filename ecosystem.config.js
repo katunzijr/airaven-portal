@@ -3,6 +3,8 @@
  * 1. On deploy: `npm ci && npm run build` — produces `dist/` and bakes `VITE_*` env at build time.
  * 2. `npm start` runs `vite preview`, which serves `dist/` (not the dev server).
  * Prefer nginx serving `dist/` directly when you can; PM2 + preview is fine behind your existing proxy.
+ *
+ * This file must be `.cjs` because package.json has "type": "module" (PM2 expects CommonJS `module.exports`).
  */
 module.exports = {
   apps: [
@@ -27,22 +29,18 @@ module.exports = {
       max_restarts: 10, // prevents infinite restart loops if the app crashes quickly in a short time
 
       // Memory management
-      max_memory_restart: '1G', // protecting against memory leaks
-      
+      max_memory_restart: "1G", // protecting against memory leaks
+
       // Monitoring
       watch: false, // Set to true for development
-      ignore_watch: [
-        'node_modules',
-        'logs',
-        '*.log'
-      ],
-      
+      ignore_watch: ["node_modules", "logs", "*.log"],
+
       // Advanced process management
       kill_timeout: 5000, // Time to wait before forcefully killing the app
       listen_timeout: 3000, // Time to wait for the app to start listening on a port
-      
+
       // Environment variables from file
-      env_file: '.env'
-    }
-  ]
-}
+      env_file: ".env",
+    },
+  ],
+};
