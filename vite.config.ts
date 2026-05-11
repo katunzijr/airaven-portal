@@ -13,11 +13,13 @@ export default defineConfig({
 
   // Required when nginx (or any proxy) forwards Host: airaven.co.tz to `vite preview`.
   preview: {
+    host: "0.0.0.0",
     allowedHosts: ['airaven.co.tz'],
   },
 
   // Same guard on `vite dev` if you open the site via that hostname through a proxy.
   server: {
+    host: "0.0.0.0",
     allowedHosts: ['airaven.co.tz'],
   },
 })
