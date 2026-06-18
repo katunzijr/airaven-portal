@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { currentUser } from '@/data'
-import { User as UserIcon, Mail, Phone, Shield, Settings, CreditCard, Bell, ChevronRight } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { useUser } from '@clerk/vue'
+import { User as UserIcon, Mail, Shield, Settings, CreditCard, Bell, ChevronRight } from 'lucide-vue-next'
 import { RouterLink } from 'vue-router'
 
-const user = currentUser
+const { user } = useUser()
+
+const displayName = computed(
+  () => user.value?.fullName ?? user.value?.firstName ?? 'Guest',
+)
+const email = computed(
+  () => user.value?.primaryEmailAddress?.emailAddress ?? '',
+)
+const avatar = computed(() => user.value?.imageUrl ?? '')
 
 const menuItems = [
   {
@@ -38,9 +47,12 @@ const menuItems = [
   },
 ]
 
-const joined = new Date(user.joinedDate).toLocaleDateString('en-US', {
-  month: 'long',
-  year: 'numeric',
+const joined = computed(() => {
+  if (!user.value?.createdAt) return ''
+  return new Date(user.value.createdAt).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
 })
 </script>
 
@@ -48,25 +60,22 @@ const joined = new Date(user.joinedDate).toLocaleDateString('en-US', {
   <div class="max-w-4xl mx-auto px-6 py-8">
     <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
       <div class="relative">
-        <img :src="user.avatar" :alt="user.name" class="w-28 h-28 rounded-lg border-4 border-white shadow-lg" width="112" height="112" />
+        <img :src="avatar" :alt="displayName" class="w-28 h-28 rounded-lg border-4 border-white shadow-lg object-cover" width="112" height="112" />
         <div class="absolute -bottom-1 -right-1 bg-secondary text-white w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold shadow-md">
           ✓
         </div>
       </div>
       <div class="text-center sm:text-left">
-        <h1 class="text-3xl font-bold">{{ user.name }}</h1>
-        <p class="text-gray-400 text-sm mt-1">Guest · Member since {{ joined }}</p>
+        <h1 class="text-3xl font-bold">{{ displayName }}</h1>
+        <p v-if="joined" class="text-gray-400 text-sm mt-1">Guest · Member since {{ joined }}</p>
         <div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500 justify-center sm:justify-start">
-          <span class="flex items-center gap-1">
-            <Mail class="w-4 h-4" /> {{ user.email }}
-          </span>
-          <span class="flex items-center gap-1">
-            <Phone class="w-4 h-4" /> {{ user.phone }}
+          <span v-if="email" class="flex items-center gap-1">
+            <Mail class="w-4 h-4" /> {{ email }}
           </span>
         </div>
         <div class="flex gap-6 mt-4 justify-center sm:justify-start">
           <div class="text-center">
-            <p class="text-xl font-bold">{{ user.wishlist.length }}</p>
+            <p class="text-xl font-bold">0</p>
             <p class="text-xs text-gray-400">Wishlists</p>
           </div>
           <div class="text-center">

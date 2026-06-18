@@ -36,6 +36,8 @@ export interface Property {
   checkOut: string;
   cancellationPolicy: string;
   instantBook: boolean;
+  canReview?: boolean;
+  hasReviewed?: boolean;
 }
 
 export interface Trip {
@@ -101,7 +103,9 @@ export interface Booking {
   checkOut: string;
   guests: number;
   totalPrice: number;
+  currency?: string;
   status: "confirmed" | "pending" | "cancelled" | "completed";
+  paymentStatus?: "pending" | "paid" | "failed" | "cancelled";
   createdAt: string;
 }
 

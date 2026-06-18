@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { properties, reviews } from '@/data'
+import { useAuth } from '@clerk/vue'
+import type { Property, Review } from '@/types'
+import type { AvailabilityRange } from '@/types/host'
+import { fetchProperty, fetchPropertyAvailability } from '@/api/catalog'
+import { createPropertyReview, fetchPropertyReviews } from '@/api/reviews'
+import { useWishlist } from '@/composables/useWishlist'
+import PropertyReviewForm from '@/components/property/PropertyReviewForm.vue'
 import {
   Heart,
   Share2,
@@ -18,38 +24,82 @@ import {
   Images,
   X,
 } from 'lucide-vue-next'
-import { formatTZS } from '@/lib/format'
+import { resolveAmenity, amenityDisplayName } from '@/lib/amenities'
+import { usePreferences } from '@/composables/usePreferences'
+import { isStayAvailable } from '@/lib/availabilityDates'
+import { shareListing } from '@/lib/share'
+import BookingDateRangePicker from '@/components/booking/BookingDateRangePicker.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { isSignedIn } = useAuth()
+const { isSaved, toggle, setSaved, refreshWishlist } = useWishlist()
+const { t, formatMoney, locale, tp } = usePreferences()
 
-const property = computed(() => properties.find((p) => p.id === route.params.id))
+const property = ref<Property | null>(null)
+const reviews = ref<Review[]>([])
+const availability = ref<AvailabilityRange[]>([])
+const loading = ref(true)
+const loadError = ref('')
+const reviewLoading = ref(false)
+const reviewError = ref('')
+const reviewSuccess = ref('')
+const saveLoading = ref(false)
+const shareMessage = ref('')
 
-const isFav = ref(false)
 const checkIn = ref('')
 const checkOut = ref('')
 const guests = ref(1)
 const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
 
-watch(
-  property,
-  (p) => {
-    isFav.value = p?.isFavorite ?? false
+const isFav = computed(() => (property.value ? isSaved(property.value.id) : false))
+
+async function loadProperty(id: string): Promise<void> {
+  loading.value = true
+  loadError.value = ''
+  reviewError.value = ''
+  reviewSuccess.value = ''
+  try {
+    const [prop, ranges, propertyReviews] = await Promise.all([
+      fetchProperty(id),
+      fetchPropertyAvailability(id),
+      fetchPropertyReviews(id),
+    ])
+    property.value = prop
+    availability.value = ranges
+    reviews.value = propertyReviews
+    setSaved(prop.id, prop.isFavorite)
     checkIn.value = ''
     checkOut.value = ''
     guests.value = 1
     lightboxOpen.value = false
     lightboxIndex.value = 0
+  } catch (err) {
+    property.value = null
+    loadError.value = err instanceof Error ? err.message : 'Failed to load property'
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(
+  () => route.params.id,
+  (id) => {
+    if (typeof id === 'string' && id) void loadProperty(id)
   },
   { immediate: true },
+)
+
+const datesValid = computed(() =>
+  isStayAvailable(checkIn.value, checkOut.value, availability.value),
 )
 
 const nights = computed(() => {
   const ci = checkIn.value
   const co = checkOut.value
   const p = property.value
-  if (!p || !ci || !co) return 0
+  if (!p || !ci || !co || !datesValid.value) return 0
   return Math.max(
     1,
     Math.ceil((new Date(co).getTime() - new Date(ci).getTime()) / (1000 * 60 * 60 * 24)),
@@ -78,13 +128,9 @@ function nextPhoto(e?: Event) {
   lightboxIndex.value = (lightboxIndex.value + 1) % p.images.length
 }
 
-function capType(t: string) {
-  return t.charAt(0).toUpperCase() + t.slice(1)
-}
-
 function reserve() {
   const p = property.value
-  if (!p || !checkIn.value || !checkOut.value) return
+  if (!p || !checkIn.value || !checkOut.value || !datesValid.value) return
   router.push({
     path: `/booking/${p.id}`,
     query: {
@@ -94,17 +140,96 @@ function reserve() {
     },
   })
 }
+
+async function handleSave(): Promise<void> {
+  const p = property.value
+  if (!p) return
+
+  if (!isSignedIn.value) {
+    router.push({ path: '/sign-in', query: { redirect: route.fullPath } })
+    return
+  }
+
+  saveLoading.value = true
+  try {
+    await toggle(p.id)
+  } catch (err) {
+    loadError.value = err instanceof Error ? err.message : 'Failed to update wishlist'
+  } finally {
+    saveLoading.value = false
+  }
+}
+
+async function handleShare(): Promise<void> {
+  const p = property.value
+  if (!p) return
+
+  try {
+    const result = await shareListing(p.title, window.location.href)
+    shareMessage.value = result === 'shared' ? t('property.shareSuccess') : t('property.copySuccess')
+    setTimeout(() => {
+      shareMessage.value = ''
+    }, 3000)
+  } catch {
+    shareMessage.value = t('property.shareError')
+    setTimeout(() => {
+      shareMessage.value = ''
+    }, 3000)
+  }
+}
+
+async function submitReview(payload: { rating: number; comment: string }): Promise<void> {
+  const p = property.value
+  if (!p) return
+
+  if (!isSignedIn.value) {
+    router.push({ path: '/sign-in', query: { redirect: route.fullPath } })
+    return
+  }
+
+  reviewLoading.value = true
+  reviewError.value = ''
+  reviewSuccess.value = ''
+  try {
+    const review = await createPropertyReview({
+      propertyId: p.id,
+      rating: payload.rating,
+      comment: payload.comment,
+    })
+    reviews.value = [review, ...reviews.value]
+    const updated = await fetchProperty(p.id)
+    property.value = { ...updated, canReview: false, hasReviewed: true }
+    reviewSuccess.value = 'Thanks for reviewing this listing!'
+  } catch (err) {
+    reviewError.value = err instanceof Error ? err.message : 'Failed to submit review'
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+void refreshWishlist()
 </script>
 
 <template>
-  <div v-if="!property" class="max-w-4xl mx-auto px-6 py-20 text-center">
+  <div v-if="loading" class="max-w-4xl mx-auto px-6 py-20 text-center text-gray-400">
+    {{ t('property.loading') }}
+  </div>
+
+  <div v-else-if="!property" class="max-w-4xl mx-auto px-6 py-20 text-center">
     <div class="text-6xl mb-4">🏠</div>
-    <h1 class="text-2xl font-bold mb-2">Property not found</h1>
-    <p class="text-gray-400 mb-6">The property you're looking for doesn't exist or has been removed.</p>
-    <RouterLink to="/" class="text-primary font-medium hover:underline">Back to home</RouterLink>
+    <h1 class="text-2xl font-bold mb-2">{{ t('property.notFound') }}</h1>
+    <p class="text-gray-400 mb-6">{{ loadError || t('property.notFoundDesc') }}</p>
+    <RouterLink to="/" class="text-primary font-medium hover:underline">{{ t('property.backHome') }}</RouterLink>
   </div>
 
   <div v-else class="max-w-[1120px] mx-auto px-6 py-6">
+    <p
+      v-if="shareMessage"
+      class="mb-4 text-sm text-primary bg-primary/5 border border-primary/20 rounded-lg px-4 py-3"
+    >
+      {{ shareMessage }}
+    </p>
+
     <div class="mb-4">
       <h1 class="text-2xl md:text-3xl font-bold">{{ property.title }}</h1>
       <div class="flex flex-wrap items-center gap-3 mt-2 text-sm">
@@ -112,25 +237,30 @@ function reserve() {
           <Star class="w-4 h-4 fill-foreground" />
           {{ property.rating }}
         </span>
-        <span class="text-gray-400"> · {{ property.reviewCount }} reviews </span>
+        <span class="text-gray-400"> · {{ property.reviewCount }} {{ t('property.reviewsCount') }} </span>
         <span v-if="property.host.superhost" class="flex items-center gap-1 text-gray-400">
-          · <Award class="w-4 h-4" /> Superhost
+          · <Award class="w-4 h-4" /> {{ t('property.superhost') }}
         </span>
         <span class="flex items-center gap-1 text-gray-400">
           · <MapPin class="w-4 h-4" />
           {{ property.location.city }}, {{ property.location.country }}
         </span>
         <div class="ml-auto flex items-center gap-3">
-          <button type="button" class="flex items-center gap-1 text-sm font-medium hover:bg-gray-50 px-3 py-1 rounded-lg">
-            <Share2 class="w-4 h-4" /> Share
-          </button>
           <button
             type="button"
             class="flex items-center gap-1 text-sm font-medium hover:bg-gray-50 px-3 py-1 rounded-lg"
-            @click="isFav = !isFav"
+            @click="handleShare"
+          >
+            <Share2 class="w-4 h-4" /> {{ t('property.share') }}
+          </button>
+          <button
+            type="button"
+            class="flex items-center gap-1 text-sm font-medium hover:bg-gray-50 px-3 py-1 rounded-lg disabled:opacity-60"
+            :disabled="saveLoading"
+            @click="handleSave"
           >
             <Heart class="w-4 h-4" :class="isFav ? 'fill-secondary text-secondary' : ''" />
-            {{ isFav ? 'Saved' : 'Save' }}
+            {{ isFav ? t('property.saved') : t('property.save') }}
           </button>
         </div>
       </div>
@@ -253,13 +383,13 @@ function reserve() {
         <div class="flex items-center justify-between pb-6 border-b border-gray-200 gap-4">
           <div>
             <h2 class="text-xl font-semibold">
-              {{ capType(property.type) }} hosted by {{ property.host.name }}
+              {{ tp(property.type) }} {{ t('property.hostedBy') }} {{ property.host.name }}
             </h2>
             <p class="text-gray-400 text-sm mt-1">
-              {{ property.maxGuests }} guests · {{ property.bedrooms }} bedroom{{ property.bedrooms !== 1 ? 's' : '' }} ·
-              {{ property.beds }} bed{{ property.beds !== 1 ? 's' : '' }} · {{ property.bathrooms }} bathroom{{
-                property.bathrooms !== 1 ? 's' : ''
-              }}
+              {{ property.maxGuests }} {{ t('property.guests') }} · {{ property.bedrooms }}
+              {{ property.bedrooms !== 1 ? t('property.bedrooms') : t('property.bedroom') }} ·
+              {{ property.beds }} {{ property.beds !== 1 ? t('property.beds') : t('property.bed') }} ·
+              {{ property.bathrooms }} {{ property.bathrooms !== 1 ? t('property.bathrooms') : t('property.bathroom') }}
             </p>
           </div>
           <img :src="property.host.avatar" :alt="property.host.name" class="w-14 h-14 rounded-full shrink-0" width="56" height="56" />
@@ -269,17 +399,15 @@ function reserve() {
           <div v-if="property.host.superhost" class="flex gap-4">
             <Award class="w-6 h-6 shrink-0 mt-0.5" />
             <div>
-              <p class="font-medium">{{ property.host.name }} is a Superhost</p>
-              <p class="text-sm text-gray-400">
-                Superhosts are experienced, highly rated hosts who are committed to providing great stays.
-              </p>
+              <p class="font-medium">{{ property.host.name }} {{ t('property.superhostTitle') }}</p>
+              <p class="text-sm text-gray-400">{{ t('property.superhostDesc') }}</p>
             </div>
           </div>
           <div v-if="property.instantBook" class="flex gap-4">
             <Zap class="w-6 h-6 shrink-0 mt-0.5 text-secondary" />
             <div>
-              <p class="font-medium">Instant Book</p>
-              <p class="text-sm text-gray-400">Book without waiting for the host to respond.</p>
+              <p class="font-medium">{{ t('property.instantBook') }}</p>
+              <p class="text-sm text-gray-400">{{ t('property.instantBookDesc') }}</p>
             </div>
           </div>
           <div class="flex gap-4">
@@ -298,11 +426,18 @@ function reserve() {
         </div>
 
         <div class="py-6 border-b border-gray-200">
-          <h3 class="text-lg font-semibold mb-4">What this place offers</h3>
-          <div class="grid grid-cols-2 gap-3">
-            <div v-for="amenity in property.amenities" :key="amenity" class="flex items-center gap-3 text-sm">
-              <Check class="w-5 h-5 text-accent-dark shrink-0" />
-              {{ amenity }}
+          <h3 class="text-lg font-semibold mb-4">{{ t('property.offers') }}</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div
+              v-for="amenity in property.amenities"
+              :key="amenity"
+              class="flex items-center gap-3 text-sm rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+            >
+              <component
+                :is="resolveAmenity(amenity)?.icon ?? Check"
+                class="w-5 h-5 text-secondary shrink-0"
+              />
+              <span>{{ amenityDisplayName(amenity, locale) }}</span>
             </div>
           </div>
         </div>
@@ -310,9 +445,35 @@ function reserve() {
         <div class="py-6">
           <div class="flex items-center gap-2 mb-6">
             <Star class="w-5 h-5 fill-foreground" />
-            <span class="text-lg font-semibold">{{ property.rating }} · {{ property.reviewCount }} reviews</span>
+            <span class="text-lg font-semibold">{{ property.rating }} · {{ property.reviewCount }} {{ t('property.reviews') }}</span>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <div class="mb-8 space-y-3">
+            <PropertyReviewForm
+              v-if="property.canReview"
+              :loading="reviewLoading"
+              @submit="submitReview"
+            />
+            <p v-else-if="property.hasReviewed" class="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+              {{ t('property.alreadyReviewed') }}
+            </p>
+            <p
+              v-else-if="isSignedIn && property.canReview === false"
+              class="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3"
+            >
+              {{ t('property.cannotReviewOwn') }}
+            </p>
+            <p v-else class="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+              <RouterLink :to="{ path: '/sign-in', query: { redirect: route.fullPath } }" class="text-primary font-medium hover:underline">
+                {{ t('property.signIn') }}
+              </RouterLink>
+              {{ t('property.signInReview') }}
+            </p>
+            <p v-if="reviewError" class="text-sm text-error">{{ reviewError }}</p>
+            <p v-if="reviewSuccess" class="text-sm text-primary">{{ reviewSuccess }}</p>
+          </div>
+
+          <div v-if="reviews.length" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div v-for="review in reviews" :key="review.id" class="bg-gray-50 rounded-lg p-4 border border-gray-100">
               <div class="flex items-center gap-3 mb-3">
                 <img :src="review.userAvatar" :alt="review.userName" width="40" height="40" class="w-10 h-10 rounded-lg" />
@@ -328,15 +489,16 @@ function reserve() {
               <p class="text-sm text-gray-500">{{ review.comment }}</p>
             </div>
           </div>
+          <p v-else class="text-sm text-gray-400">{{ t('property.noReviews') }}</p>
         </div>
       </div>
 
       <div class="lg:col-span-1">
-        <div class="sticky top-24 bg-white border border-gray-200 rounded-lg shadow-lg p-6">
+        <div class="sticky top-24 bg-white border border-gray-200 rounded-lg shadow-lg p-6 overflow-visible">
           <div class="flex items-baseline justify-between mb-4 gap-2">
             <div>
-              <span class="text-2xl font-bold">{{ formatTZS(property.price) }}</span>
-              <span class="text-gray-400"> night</span>
+              <span class="text-2xl font-bold">{{ formatMoney(property.price) }}</span>
+              <span class="text-gray-400"> {{ t('property.perNight') }}</span>
             </div>
             <span class="flex items-center gap-1 text-sm shrink-0">
               <Star class="w-3.5 h-3.5 fill-foreground" />
@@ -345,21 +507,16 @@ function reserve() {
             </span>
           </div>
 
-          <div class="border border-gray-300 rounded-lg overflow-hidden mb-4">
-            <div class="grid grid-cols-2">
-              <div class="p-3 border-r border-b border-gray-300">
-                <label class="block text-[10px] font-bold uppercase">Check-in</label>
-                <input v-model="checkIn" type="date" class="w-full text-sm outline-none mt-0.5 bg-transparent" />
-              </div>
-              <div class="p-3 border-b border-gray-300">
-                <label class="block text-[10px] font-bold uppercase">Checkout</label>
-                <input v-model="checkOut" type="date" class="w-full text-sm outline-none mt-0.5 bg-transparent" />
-              </div>
-            </div>
+          <div class="border border-gray-300 rounded-lg overflow-visible mb-4">
+            <BookingDateRangePicker
+              v-model:check-in="checkIn"
+              v-model:check-out="checkOut"
+              :availability="availability"
+            />
             <div class="p-3 flex items-center justify-between">
               <div>
-                <label class="block text-[10px] font-bold uppercase">Guests</label>
-                <span class="text-sm">{{ guests }} guest{{ guests !== 1 ? 's' : '' }}</span>
+                <label class="block text-[10px] font-bold uppercase">{{ t('search.guests') }}</label>
+                <span class="text-sm">{{ guests }} {{ guests !== 1 ? t('search.guestsPlural') : t('search.guest') }}</span>
               </div>
               <div class="flex items-center gap-3">
                 <button
@@ -383,28 +540,32 @@ function reserve() {
 
           <button
             type="button"
-            class="w-full bg-secondary hover:bg-secondary-light text-white font-bold py-3 rounded-lg transition-colors text-lg"
+            class="w-full bg-secondary hover:bg-secondary-light text-white font-bold py-3 rounded-lg transition-colors text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!datesValid"
             @click="reserve"
           >
-            {{ property.instantBook ? 'Reserve' : 'Request to book' }}
+            {{ property.instantBook ? t('property.reserve') : t('property.requestBook') }}
           </button>
 
-          <p v-if="!checkIn || !checkOut" class="text-center text-xs text-gray-400 mt-3">Select dates to see total price</p>
+          <p v-if="checkIn && checkOut && !datesValid" class="text-center text-xs text-error mt-3">
+            {{ t('property.datesUnavailable') }}
+          </p>
+          <p v-else-if="!checkIn || !checkOut" class="text-center text-xs text-gray-400 mt-3">{{ t('property.selectDates') }}</p>
           <div v-else class="mt-4 space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-400 underline">
-                {{ formatTZS(property.price) }} x {{ nights }} night{{ nights !== 1 ? 's' : '' }}
+                {{ formatMoney(property.price) }} x {{ nights }} {{ nights !== 1 ? t('common.nights') : t('common.night') }}
               </span>
-              <span>{{ formatTZS(totalPrice) }}</span>
+              <span>{{ formatMoney(totalPrice) }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-400 underline">Service fee</span>
-              <span>{{ formatTZS(serviceFee) }}</span>
+              <span class="text-gray-400 underline">{{ t('property.serviceFee') }}</span>
+              <span>{{ formatMoney(serviceFee) }}</span>
             </div>
             <hr class="border-gray-200 my-2" />
             <div class="flex justify-between font-semibold text-base">
-              <span>Total</span>
-              <span>{{ formatTZS(totalPrice + serviceFee) }}</span>
+              <span>{{ t('property.total') }}</span>
+              <span>{{ formatMoney(totalPrice + serviceFee) }}</span>
             </div>
           </div>
         </div>

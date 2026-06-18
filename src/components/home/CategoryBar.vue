@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, type Component } from 'vue'
+import { ref, onMounted, computed, type Component } from 'vue'
 import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-vue-next'
 import {
   Grid3x3,
@@ -17,6 +17,7 @@ import {
   Compass,
 } from 'lucide-vue-next'
 import { categories } from '@/data'
+import { usePreferences } from '@/composables/usePreferences'
 
 defineProps<{
   activeCategory: string
@@ -25,6 +26,8 @@ defineProps<{
 const emit = defineEmits<{
   categoryChange: [slug: string]
 }>()
+
+const { tc, t } = usePreferences()
 
 const iconMap: Record<string, Component> = {
   grid: Grid3x3,
@@ -41,6 +44,10 @@ const iconMap: Record<string, Component> = {
   flame: Flame,
   compass: Compass,
 }
+
+const localizedCategories = computed(() =>
+  categories.map((cat) => ({ ...cat, name: tc(cat.slug) })),
+)
 
 const scrollRef = ref<HTMLElement | null>(null)
 const showLeft = ref(false)
@@ -75,13 +82,9 @@ onMounted(handleScroll)
             <ChevronLeft class="w-4 h-4" />
           </button>
 
-          <div
-            ref="scrollRef"
-            class="flex items-center gap-2 overflow-x-auto scrollbar-hide px-2"
-            @scroll="handleScroll"
-          >
+          <div ref="scrollRef" class="flex items-center gap-2 overflow-x-auto scrollbar-hide px-2" @scroll="handleScroll">
             <button
-              v-for="cat in categories"
+              v-for="cat in localizedCategories"
               :key="cat.id"
               type="button"
               class="flex items-center gap-2 min-w-fit px-4 py-2 rounded-lg text-sm font-medium transition-all"
@@ -107,12 +110,9 @@ onMounted(handleScroll)
           </button>
         </div>
 
-        <button
-          type="button"
-          class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 hover:bg-gray-50 transition-colors shrink-0"
-        >
+        <button type="button" class="flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 hover:bg-gray-50 transition-colors shrink-0">
           <SlidersHorizontal class="w-4 h-4" />
-          <span class="text-sm font-medium">Filters</span>
+          <span class="text-sm font-medium">{{ t('search.filters') }}</span>
         </button>
       </div>
     </div>

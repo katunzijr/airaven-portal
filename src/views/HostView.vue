@@ -1,5 +1,14 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { Shield, DollarSign, Users, ArrowRight, Headphones } from 'lucide-vue-next'
+import { useIsHost } from '@/composables/useIsHost'
+
+const router = useRouter()
+const { isHost, hostChecked } = useIsHost()
+
+function startHosting(): void {
+  router.push('/host/onboarding')
+}
 
 const benefits = [
   {
@@ -50,6 +59,24 @@ const steps = [
 
 <template>
   <div>
+    <section
+      v-if="hostChecked && isHost"
+      class="max-w-3xl mx-auto px-6 py-24 text-center"
+    >
+      <h1 class="text-4xl font-extrabold mb-4">Welcome back, host</h1>
+      <p class="text-gray-500 mb-8">
+        You're already set up to host on Airaven. Add a new listing or manage your existing properties.
+      </p>
+      <button
+        type="button"
+        class="bg-primary text-white font-bold px-8 py-4 rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center gap-2"
+        @click="startHosting"
+      >
+        Add a listing <ArrowRight class="w-5 h-5" />
+      </button>
+    </section>
+
+    <template v-else>
     <section class="relative bg-gradient-to-br from-primary via-primary-dark to-purple py-20 md:py-32 text-white overflow-hidden">
       <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
         <h1 class="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">Open your door to hosting</h1>
@@ -57,7 +84,7 @@ const steps = [
           Join millions of hosts on Airaven and start earning by sharing your home, apartment, room, or unique space.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <button type="button" class="bg-accent text-primary font-bold px-8 py-4 rounded-lg text-lg hover:bg-accent-dark transition-colors">
+          <button type="button" class="bg-accent text-primary font-bold px-8 py-4 rounded-lg text-lg hover:bg-accent-dark transition-colors" @click="startHosting">
             Get started
           </button>
           <button
@@ -155,10 +182,12 @@ const steps = [
         <button
           type="button"
           class="bg-accent text-primary hover:bg-accent-dark font-bold px-10 py-4 rounded-lg text-lg transition-colors inline-flex items-center gap-2"
+          @click="startHosting"
         >
           Start hosting <ArrowRight class="w-5 h-5" />
         </button>
       </div>
     </section>
+    </template>
   </div>
 </template>

@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Search, Globe, Menu, User, Heart, CalendarDays } from 'lucide-vue-next'
+import { Search, Globe, Menu, Heart, CalendarDays } from 'lucide-vue-next'
+import HeaderClerkAuth from '@/components/layout/HeaderClerkAuth.vue'
+import HeaderHostLink from '@/components/layout/HeaderHostLink.vue'
+import HeaderWishlistLink from '@/components/layout/HeaderWishlistLink.vue'
+import LocaleCurrencyMenu from '@/components/layout/LocaleCurrencyMenu.vue'
+import { usePreferences } from '@/composables/usePreferences'
+import { useIsHost } from '@/composables/useIsHost'
+import { isClerkConfigured } from '@/lib/clerk'
 
 const mobileMenuOpen = ref(false)
+const clerkEnabled = isClerkConfigured()
+const { isHost, hostChecked } = useIsHost()
+const { t } = usePreferences()
 </script>
 
 <template>
@@ -23,29 +33,23 @@ const mobileMenuOpen = ref(false)
             class="flex items-center w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 hover:bg-white/15 transition-colors"
           >
             <Search class="w-4 h-4 text-accent mr-3 shrink-0" />
-            <span class="text-sm text-white/70">Search stays, trips, experiences...</span>
+            <span class="text-sm text-white/70">{{ t('nav.search') }}</span>
           </RouterLink>
         </div>
 
-        <div class="flex items-center gap-1">
-          <RouterLink
-            to="/host"
-            class="hidden lg:block text-sm font-medium hover:bg-white/10 px-4 py-2 rounded-lg transition-colors"
-          >
-            Become a Host
-          </RouterLink>
-          <button type="button" class="hidden lg:flex items-center hover:bg-white/10 p-2.5 rounded-lg transition-colors">
-            <Globe class="w-4 h-4" />
-          </button>
+        <div class="flex items-center gap-2">
+          <HeaderHostLink />
+          <HeaderWishlistLink v-if="clerkEnabled" />
+          <LocaleCurrencyMenu />
+
+          <HeaderClerkAuth v-if="clerkEnabled" />
+
           <button
             type="button"
-            class="flex items-center gap-2 bg-white/10 border border-white/20 rounded-lg px-3 py-2 hover:bg-white/20 transition-colors ml-1"
+            class="flex items-center gap-2 bg-white/10 border border-white/20 rounded-lg px-3 py-2 hover:bg-white/20 transition-colors sm:hidden"
             @click="mobileMenuOpen = !mobileMenuOpen"
           >
             <Menu class="w-4 h-4" />
-            <div class="w-7 h-7 bg-secondary rounded-md flex items-center justify-center">
-              <User class="w-4 h-4 text-white" />
-            </div>
           </button>
         </div>
       </div>
@@ -58,8 +62,8 @@ const mobileMenuOpen = ref(false)
       >
         <Search class="w-5 h-5 text-accent" />
         <div>
-          <p class="text-sm font-medium">Where to?</p>
-          <p class="text-xs text-white/60">Anywhere · Any week · Add guests</p>
+          <p class="text-sm font-medium">{{ t('nav.whereTo') }}</p>
+          <p class="text-xs text-white/60">{{ t('nav.searchHint') }}</p>
         </div>
       </RouterLink>
     </div>
@@ -68,43 +72,53 @@ const mobileMenuOpen = ref(false)
       v-if="mobileMenuOpen"
       class="absolute right-6 top-16 bg-white text-foreground border border-gray-200 rounded-lg shadow-xl py-2 w-60 z-50"
     >
+      <template v-if="clerkEnabled">
+        <RouterLink
+          to="/profile"
+          class="block px-4 py-3 text-sm hover:bg-gray-50 font-medium"
+          @click="mobileMenuOpen = false"
+        >
+          {{ t('nav.profile') }}
+        </RouterLink>
+        <RouterLink
+          to="/wishlist"
+          class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="mobileMenuOpen = false"
+        >
+          <Heart class="w-4 h-4 text-secondary" /> {{ t('nav.wishlist') }}
+        </RouterLink>
+        <RouterLink
+          to="/bookings"
+          class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="mobileMenuOpen = false"
+        >
+          <CalendarDays class="w-4 h-4 text-secondary" /> {{ t('nav.bookings') }}
+        </RouterLink>
+        <RouterLink
+          to="/trips"
+          class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="mobileMenuOpen = false"
+        >
+          <Globe class="w-4 h-4 text-secondary" /> {{ t('nav.trips') }}
+        </RouterLink>
+        <hr class="my-2 border-gray-100" />
+      </template>
       <RouterLink
-        to="/profile"
-        class="block px-4 py-3 text-sm hover:bg-gray-50 font-medium"
-        @click="mobileMenuOpen = false"
-      >
-        Profile
-      </RouterLink>
-      <RouterLink
-        to="/wishlist"
-        class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
-        @click="mobileMenuOpen = false"
-      >
-        <Heart class="w-4 h-4 text-secondary" /> Wishlists
-      </RouterLink>
-      <RouterLink
-        to="/bookings"
-        class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
-        @click="mobileMenuOpen = false"
-      >
-        <CalendarDays class="w-4 h-4 text-secondary" /> Bookings
-      </RouterLink>
-      <RouterLink
-        to="/trips"
-        class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
-        @click="mobileMenuOpen = false"
-      >
-        <Globe class="w-4 h-4 text-secondary" /> Trips & Experiences
-      </RouterLink>
-      <hr class="my-2 border-gray-100" />
-      <RouterLink
+        v-if="!clerkEnabled || (hostChecked && !isHost)"
         to="/host"
         class="block px-4 py-3 text-sm hover:bg-gray-50"
         @click="mobileMenuOpen = false"
       >
-        Become a Host
+        {{ t('nav.becomeHost') }}
       </RouterLink>
-      <button type="button" class="w-full text-left px-4 py-3 text-sm hover:bg-gray-50">Log out</button>
+      <RouterLink
+        v-else-if="clerkEnabled && hostChecked && isHost"
+        to="/host/onboarding"
+        class="block px-4 py-3 text-sm hover:bg-gray-50"
+        @click="mobileMenuOpen = false"
+      >
+        {{ t('nav.addListing') }}
+      </RouterLink>
     </div>
   </header>
 </template>

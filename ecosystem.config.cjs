@@ -11,7 +11,7 @@ module.exports = {
     {
       name: "airaven-portal",
       script: "npm",
-      args: "start",
+      args: "run preview -- --host 0.0.0.0 --port 5173",
       cwd: "/var/apps/airaven-portal",
       instances: 1,
       exec_mode: "fork",

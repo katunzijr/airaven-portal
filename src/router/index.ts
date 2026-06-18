@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authGuard } from './authGuard'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +27,12 @@ const router = createRouter({
       meta: { title: 'Become a Host - Airaven' },
     },
     {
+      path: '/host/onboarding',
+      name: 'host-onboarding',
+      component: () => import('@/views/HostOnboardingView.vue'),
+      meta: { title: 'Host Onboarding – Airaven', requiresAuth: true },
+    },
+    {
       path: '/trips',
       name: 'trips',
       component: () => import('@/views/TripsView.vue'),
@@ -38,22 +45,34 @@ const router = createRouter({
       meta: { title: 'Experience – Airaven' },
     },
     {
+      path: '/sign-in',
+      name: 'sign-in',
+      component: () => import('@/views/SignInView.vue'),
+      meta: { title: 'Sign In – Airaven' },
+    },
+    {
+      path: '/sign-up',
+      name: 'sign-up',
+      component: () => import('@/views/SignUpView.vue'),
+      meta: { title: 'Sign Up – Airaven' },
+    },
+    {
       path: '/bookings',
       name: 'bookings',
       component: () => import('@/views/BookingsView.vue'),
-      meta: { title: 'My Bookings - Airaven' },
+      meta: { title: 'My Bookings - Airaven', requiresAuth: true },
     },
     {
       path: '/booking/:id/confirmation',
       name: 'booking-confirmation',
       component: () => import('@/views/BookingConfirmationView.vue'),
-      meta: { title: 'Booking Confirmed – Airaven' },
+      meta: { title: 'Booking Confirmed – Airaven', requiresAuth: true },
     },
     {
       path: '/booking/:id',
       name: 'booking',
       component: () => import('@/views/BookingView.vue'),
-      meta: { title: 'Complete Your Booking – Airaven' },
+      meta: { title: 'Complete Your Booking – Airaven', requiresAuth: true },
     },
     {
       path: '/property/:id',
@@ -65,16 +84,18 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),
-      meta: { title: 'Profile - Airaven' },
+      meta: { title: 'Profile - Airaven', requiresAuth: true },
     },
     {
       path: '/wishlist',
       name: 'wishlist',
       component: () => import('@/views/WishlistView.vue'),
-      meta: { title: 'Wishlists – Airaven' },
+      meta: { title: 'Wishlists – Airaven', requiresAuth: true },
     },
   ],
 })
+
+router.beforeEach(authGuard)
 
 router.afterEach((to) => {
   const title = to.meta.title as string | undefined

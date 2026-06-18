@@ -22,8 +22,8 @@ git clone git@github-airaven-portal:katunzijr/airaven-portal.git
 
 ### Server
 sudo lsof /var/lib/apt/lists/lock
-lsof -ti:3000 | xargs kill -9 2>/dev/null; echo "Cleared port 3000"
-kill -9 $(lsof -t -i:3000)
+lsof -ti:5173 | xargs kill -9 2>/dev/null; echo "Cleared port 5173"
+kill -9 $(lsof -t -i:5173)
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt update
 sudo apt upgrade -y
@@ -61,7 +61,7 @@ APP_DIR → /var/apps/airaven-portal
 nginx -version
 apt-get install nginx
 apt install -y certbot python3-certbot-nginx
-nano /etc/nginx/sites-available/default
+nano /etc/nginx/sites-available/airaven-portal
 
 server {
     listen 80;
@@ -80,6 +80,8 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+ln -s /etc/nginx/sites-available/airaven-portal /etc/nginx/sites-enabled/
 
 ping airaven.co.tz
 sudo certbot --nginx -d airaven.co.tz

@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useIsHost } from '@/composables/useIsHost'
+import { isClerkConfigured } from '@/lib/clerk'
+
+const { isHost, hostChecked } = useIsHost()
 
 const footerLinks = {
   support: [
@@ -11,7 +16,8 @@ const footerLinks = {
     { label: 'Report concern', href: '/report' },
   ],
   hosting: [
-    { label: 'Become a Host', href: '/host' },
+    { label: 'Become a Host', href: '/host', hostOnly: false, guestOnly: true },
+    { label: 'Add listing', href: '/host/onboarding', hostOnly: true, guestOnly: false },
     { label: 'AirCover for Hosts', href: '/aircover-host' },
     { label: 'Hosting resources', href: '/resources' },
     { label: 'Community forum', href: '/community' },
@@ -25,6 +31,14 @@ const footerLinks = {
     { label: 'Gift cards', href: '/gift-cards' },
   ],
 }
+
+const visibleHostingLinks = computed(() => {
+  return footerLinks.hosting.filter((link) => {
+    if ('hostOnly' in link && link.hostOnly) return isClerkConfigured() && hostChecked.value && isHost.value
+    if ('guestOnly' in link && link.guestOnly) return !isClerkConfigured() || !hostChecked.value || !isHost.value
+    return true
+  })
+})
 </script>
 
 <template>
@@ -55,7 +69,7 @@ const footerLinks = {
         <div>
           <h3 class="text-sm font-bold mb-4 text-accent">Hosting</h3>
           <ul class="space-y-3">
-            <li v-for="link in footerLinks.hosting" :key="link.href">
+            <li v-for="link in visibleHostingLinks" :key="link.href">
               <RouterLink :to="link.href" class="text-sm text-white/50 hover:text-white transition-colors">
                 {{ link.label }}
               </RouterLink>
