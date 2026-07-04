@@ -41,11 +41,11 @@ const sectionTitle = computed(() => {
 })
 
 const destinations = [
-  { city: 'Zanzibar', country: 'Tanzania', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRU08gp4037xfX-NgjGf9iUU2b62Mc6LRuJWQRAcUGv-uoj3MO6u-SZWM&s=10', flag: '🇹🇿' },
-  { city: 'Nairobi', country: 'Kenya', img: 'https://images.contentstack.io/v3/assets/blt06f605a34f1194ff/blta6e0de21a01faae4/686e5f5b6cdcee1f9dc379dc/kenny-murgor-E_0kbeQbyV0-unsplash-HEADERMOBILE.jpg?fit=crop&auto=webp&quality=60&crop=smart&format=avif', flag: '🇰🇪' },
   { city: 'Dar es Salaam', country: 'Tanzania', img: 'https://altezzatravel.com/upload/medialib/27f/b0qz1nq6npa9cybt68bj490mkhzgwz1e.webp', flag: '🇹🇿' },
+  { city: 'Zanzibar', country: 'Tanzania', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRU08gp4037xfX-NgjGf9iUU2b62Mc6LRuJWQRAcUGv-uoj3MO6u-SZWM&s=10', flag: '🇹🇿' },
   { city: 'Arusha', country: 'Tanzania', img: 'https://i2.wp.com/foreverlostintravel.com/wp-content/uploads/2024/01/Arusha-Tanzania-Art-Gallery-scaled.jpg?fit=688%2C516&ssl=1', flag: '🇹🇿' },
-  { city: 'Kigali', country: 'Rwanda', img: 'https://www.safarisrwandasafari.com/wp-content/uploads/2023/04/illume_orig.jpg', flag: '🇷🇼' },
+  { city: 'Mwanza', country: 'Tanzania', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTpPoQkatw8yZoaE0ILXSXpQF1xe-ijdRU5eF2yHiTD97m994HC5oO0lI7a&s=10', flag: '🇹🇿' },
+  { city: 'Nairobi', country: 'Kenya', img: 'https://images.contentstack.io/v3/assets/blt06f605a34f1194ff/blta6e0de21a01faae4/686e5f5b6cdcee1f9dc379dc/kenny-murgor-E_0kbeQbyV0-unsplash-HEADERMOBILE.jpg?fit=crop&auto=webp&quality=60&crop=smart&format=avif', flag: '🇰🇪' },
 ]
 </script>
 
@@ -76,18 +76,18 @@ const destinations = [
         <div class="hidden lg:grid grid-cols-2 gap-3">
           <div class="space-y-3">
             <div class="rounded-lg overflow-hidden h-40">
-              <img src="https://picsum.photos/seed/hero1/400/300" alt="" class="w-full h-full object-cover" width="400" height="300" />
+              <img src="https://swahilitimes.co.tz/wp-content/uploads/2022/02/images-16.jpeg" alt="" class="w-full h-full object-cover" width="400" height="300" />
             </div>
             <div class="rounded-lg overflow-hidden h-56">
-              <img src="https://picsum.photos/seed/hero2/400/500" alt="" class="w-full h-full object-cover" width="400" height="500" />
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1pEv5OVu0QBOjaFG5A7vch6zmkkZGMV-zfbgY7jpjFurseEAh3nni3ts&s=10" alt="" class="w-full h-full object-cover" width="400" height="500" />
             </div>
           </div>
           <div class="space-y-3 pt-8">
             <div class="rounded-lg overflow-hidden h-56">
-              <img src="https://picsum.photos/seed/hero3/400/500" alt="" class="w-full h-full object-cover" width="400" height="500" />
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8hZCzVvN0D2RxmT4k3eO1kzmD7qd-Csf7reG9n5SczZa5Q3JflDzV1x4&s=10" alt="" class="w-full h-full object-cover" width="400" height="500" />
             </div>
             <div class="rounded-lg overflow-hidden h-40">
-              <img src="https://picsum.photos/seed/hero4/400/300" alt="" class="w-full h-full object-cover" width="400" height="300" />
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjn_34k0W6r2tZe8kvfUQJaZUqutr3f9vJRN29Qyr9btSzfO2oHi1cOTc&s=10" alt="" class="w-full h-full object-cover" width="400" height="300" />
             </div>
           </div>
         </div>
