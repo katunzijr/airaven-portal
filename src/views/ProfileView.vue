@@ -103,12 +103,6 @@ const joined = computed(() => {
       >
         Wishlists
       </RouterLink>
-      <RouterLink
-        to="/trips"
-        class="bg-secondary/10 text-secondary px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary/20 transition-colors"
-      >
-        Trips
-      </RouterLink>
     </div>
 
     <h2 class="text-xl font-bold mb-4">Account settings</h2>

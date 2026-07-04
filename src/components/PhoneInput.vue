@@ -138,7 +138,7 @@ watch(
         type="tel"
         inputmode="tel"
         :required="required"
-        placeholder="656 631 106"
+        placeholder="656 631 1XX"
         class="flex-1 border border-gray-200 rounded-lg px-4 py-3"
         @input="onNationalInput"
       />

@@ -84,7 +84,7 @@ export function validatePhone(value: string): { valid: boolean; message?: string
   if (!trimmed) return { valid: true }
 
   if (!isValidPhoneNumber(trimmed)) {
-    return { valid: false, message: 'Enter a valid phone number (e.g. +255 656 631 106)' }
+    return { valid: false, message: 'Enter a valid phone number (e.g. +255 656 631 1XX)' }
   }
 
   return { valid: true }

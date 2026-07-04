@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuth } from '@clerk/vue'
-import type { Property, Review } from '@/types'
+import type { Property, PropertyListing, Review } from '@/types'
 import type { AvailabilityRange } from '@/types/host'
 import { fetchProperty, fetchPropertyAvailability } from '@/api/catalog'
 import { createPropertyReview, fetchPropertyReviews } from '@/api/reviews'
@@ -37,6 +37,7 @@ const { isSaved, toggle, setSaved, refreshWishlist } = useWishlist()
 const { t, formatMoney, locale, tp } = usePreferences()
 
 const property = ref<Property | null>(null)
+const selectedListingId = ref('')
 const reviews = ref<Review[]>([])
 const availability = ref<AvailabilityRange[]>([])
 const loading = ref(true)
@@ -55,26 +56,41 @@ const lightboxIndex = ref(0)
 
 const isFav = computed(() => (property.value ? isSaved(property.value.id) : false))
 
+const selectedListing = computed((): PropertyListing | null => {
+  const p = property.value
+  if (!p?.listings?.length) return null
+  return p.listings.find((l) => l.id === selectedListingId.value) ?? p.listings[0]
+})
+
+async function loadAvailability(listingId: string): Promise<void> {
+  if (!property.value) return
+  availability.value = await fetchPropertyAvailability(property.value.id, listingId)
+}
+
 async function loadProperty(id: string): Promise<void> {
   loading.value = true
   loadError.value = ''
   reviewError.value = ''
   reviewSuccess.value = ''
   try {
-    const [prop, ranges, propertyReviews] = await Promise.all([
+    const [prop, propertyReviews] = await Promise.all([
       fetchProperty(id),
-      fetchPropertyAvailability(id),
       fetchPropertyReviews(id),
     ])
     property.value = prop
-    availability.value = ranges
     reviews.value = propertyReviews
     setSaved(prop.id, prop.isFavorite)
+    selectedListingId.value = prop.listings?.[0]?.id ?? ''
     checkIn.value = ''
     checkOut.value = ''
     guests.value = 1
     lightboxOpen.value = false
     lightboxIndex.value = 0
+    if (selectedListingId.value) {
+      await loadAvailability(selectedListingId.value)
+    } else {
+      availability.value = []
+    }
   } catch (err) {
     property.value = null
     loadError.value = err instanceof Error ? err.message : 'Failed to load property'
@@ -82,6 +98,10 @@ async function loadProperty(id: string): Promise<void> {
     loading.value = false
   }
 }
+
+watch(selectedListingId, (listingId) => {
+  if (listingId) void loadAvailability(listingId)
+})
 
 watch(
   () => route.params.id,
@@ -98,15 +118,15 @@ const datesValid = computed(() =>
 const nights = computed(() => {
   const ci = checkIn.value
   const co = checkOut.value
-  const p = property.value
-  if (!p || !ci || !co || !datesValid.value) return 0
+  const listing = selectedListing.value
+  if (!listing || !ci || !co || !datesValid.value) return 0
   return Math.max(
     1,
     Math.ceil((new Date(co).getTime() - new Date(ci).getTime()) / (1000 * 60 * 60 * 24)),
   )
 })
 
-const totalPrice = computed(() => (property.value ? nights.value * property.value.price : 0))
+const totalPrice = computed(() => (selectedListing.value ? nights.value * selectedListing.value.price : 0))
 const serviceFee = computed(() => Math.round(totalPrice.value * 0.12))
 
 function openLightbox(index: number) {
@@ -130,10 +150,12 @@ function nextPhoto(e?: Event) {
 
 function reserve() {
   const p = property.value
-  if (!p || !checkIn.value || !checkOut.value || !datesValid.value) return
+  const listing = selectedListing.value
+  if (!p || !listing || !checkIn.value || !checkOut.value || !datesValid.value) return
   router.push({
     path: `/booking/${p.id}`,
     query: {
+      listingId: listing.id,
       checkIn: checkIn.value,
       checkOut: checkOut.value,
       guests: String(guests.value),
@@ -386,10 +408,12 @@ void refreshWishlist()
               {{ tp(property.type) }} {{ t('property.hostedBy') }} {{ property.host.name }}
             </h2>
             <p class="text-gray-400 text-sm mt-1">
-              {{ property.maxGuests }} {{ t('property.guests') }} · {{ property.bedrooms }}
-              {{ property.bedrooms !== 1 ? t('property.bedrooms') : t('property.bedroom') }} ·
-              {{ property.beds }} {{ property.beds !== 1 ? t('property.beds') : t('property.bed') }} ·
-              {{ property.bathrooms }} {{ property.bathrooms !== 1 ? t('property.bathrooms') : t('property.bathroom') }}
+              <template v-if="selectedListing">
+                {{ selectedListing.maxGuests }} {{ t('property.guests') }} · {{ selectedListing.bedrooms }}
+                {{ selectedListing.bedrooms !== 1 ? t('property.bedrooms') : t('property.bedroom') }} ·
+                {{ selectedListing.beds }} {{ selectedListing.beds !== 1 ? t('property.beds') : t('property.bed') }} ·
+                {{ selectedListing.bathrooms }} {{ selectedListing.bathrooms !== 1 ? t('property.bathrooms') : t('property.bathroom') }}
+              </template>
             </p>
           </div>
           <img :src="property.host.avatar" :alt="property.host.name" class="w-14 h-14 rounded-full shrink-0" width="56" height="56" />
@@ -403,7 +427,7 @@ void refreshWishlist()
               <p class="text-sm text-gray-400">{{ t('property.superhostDesc') }}</p>
             </div>
           </div>
-          <div v-if="property.instantBook" class="flex gap-4">
+          <div v-if="selectedListing?.instantBook" class="flex gap-4">
             <Zap class="w-6 h-6 shrink-0 mt-0.5 text-secondary" />
             <div>
               <p class="font-medium">{{ t('property.instantBook') }}</p>
@@ -429,7 +453,7 @@ void refreshWishlist()
           <h3 class="text-lg font-semibold mb-4">{{ t('property.offers') }}</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div
-              v-for="amenity in property.amenities"
+              v-for="amenity in (selectedListing?.amenities ?? property.amenities)"
               :key="amenity"
               class="flex items-center gap-3 text-sm rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
             >
@@ -495,10 +519,29 @@ void refreshWishlist()
 
       <div class="lg:col-span-1">
         <div class="sticky top-24 bg-white border border-gray-200 rounded-lg shadow-lg p-6 overflow-visible">
+          <div v-if="(property.listings?.length ?? 0) > 1" class="mb-4 space-y-2">
+            <p class="text-sm font-semibold">Select room type</p>
+            <button
+              v-for="listing in property.listings ?? []"
+              :key="listing.id"
+              type="button"
+              class="w-full text-left rounded-lg border px-4 py-3 transition-colors"
+              :class="selectedListingId === listing.id ? 'border-secondary bg-secondary/5' : 'border-gray-200 hover:border-gray-300'"
+              @click="selectedListingId = listing.id"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-medium text-sm">{{ listing.name }}</span>
+                <span class="text-sm font-bold text-primary">{{ formatMoney(listing.price) }}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">Up to {{ listing.maxGuests }} guests</p>
+            </button>
+          </div>
+
           <div class="flex items-baseline justify-between mb-4 gap-2">
             <div>
-              <span class="text-2xl font-bold">{{ formatMoney(property.price) }}</span>
+              <span class="text-2xl font-bold">{{ formatMoney(selectedListing?.price ?? property.price) }}</span>
               <span class="text-gray-400"> {{ t('property.perNight') }}</span>
+              <p v-if="(property.listings?.length ?? 0) > 1 && !selectedListing" class="text-xs text-gray-400">from</p>
             </div>
             <span class="flex items-center gap-1 text-sm shrink-0">
               <Star class="w-3.5 h-3.5 fill-foreground" />
@@ -530,7 +573,7 @@ void refreshWishlist()
                 <button
                   type="button"
                   class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-foreground transition-colors"
-                  @click="guests = Math.min(property.maxGuests, guests + 1)"
+                  @click="guests = Math.min(selectedListing?.maxGuests ?? property.maxGuests, guests + 1)"
                 >
                   <Plus class="w-4 h-4" />
                 </button>
@@ -544,7 +587,7 @@ void refreshWishlist()
             :disabled="!datesValid"
             @click="reserve"
           >
-            {{ property.instantBook ? t('property.reserve') : t('property.requestBook') }}
+            {{ selectedListing?.instantBook ? t('property.reserve') : t('property.requestBook') }}
           </button>
 
           <p v-if="checkIn && checkOut && !datesValid" class="text-center text-xs text-error mt-3">
@@ -554,7 +597,7 @@ void refreshWishlist()
           <div v-else class="mt-4 space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-400 underline">
-                {{ formatMoney(property.price) }} x {{ nights }} {{ nights !== 1 ? t('common.nights') : t('common.night') }}
+                {{ formatMoney(selectedListing?.price ?? property.price) }} x {{ nights }} {{ nights !== 1 ? t('common.nights') : t('common.night') }}
               </span>
               <span>{{ formatMoney(totalPrice) }}</span>
             </div>

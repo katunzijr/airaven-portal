@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/vue'
+import { Show, SignInButton, SignUpButton } from '@clerk/vue'
+import HeaderUserMenu from '@/components/layout/HeaderUserMenu.vue'
+import { usePreferences } from '@/composables/usePreferences'
+
+const { t } = usePreferences()
 </script>
 
 <template>
@@ -10,7 +14,7 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/vue'
           type="button"
           class="text-sm font-medium hover:bg-white/10 px-4 py-2 rounded-lg transition-colors"
         >
-          Log in
+          {{ t('nav.login') }}
         </button>
       </SignInButton>
       <SignUpButton mode="modal">
@@ -18,21 +22,13 @@ import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/vue'
           type="button"
           class="text-sm font-medium bg-white text-primary px-4 py-2 rounded-lg hover:bg-white/90 transition-colors"
         >
-          Sign up
+          {{ t('nav.signup') }}
         </button>
       </SignUpButton>
     </div>
   </Show>
 
   <Show when="signed-in">
-    <div class="hidden sm:block">
-      <UserButton
-        :appearance="{
-          elements: {
-            avatarBox: 'w-9 h-9 rounded-lg',
-          },
-        }"
-      />
-    </div>
+    <HeaderUserMenu />
   </Show>
 </template>

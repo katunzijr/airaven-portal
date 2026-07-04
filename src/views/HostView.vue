@@ -1,10 +1,20 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Shield, DollarSign, Users, ArrowRight, Headphones } from 'lucide-vue-next'
+import { RouterLink } from 'vue-router'
 import { useIsHost } from '@/composables/useIsHost'
 
 const router = useRouter()
 const { isHost, hostChecked } = useIsHost()
+
+watch(
+  hostChecked,
+  (checked) => {
+    if (checked && isHost.value) router.replace('/host/listings')
+  },
+  { immediate: true },
+)
 
 function startHosting(): void {
   router.push('/host/onboarding')
@@ -65,15 +75,23 @@ const steps = [
     >
       <h1 class="text-4xl font-extrabold mb-4">Welcome back, host</h1>
       <p class="text-gray-500 mb-8">
-        You're already set up to host on Airaven. Add a new listing or manage your existing properties.
+        You're already set up to host on Airaven. Manage your listings or add a new one.
       </p>
-      <button
-        type="button"
-        class="bg-primary text-white font-bold px-8 py-4 rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center gap-2"
-        @click="startHosting"
-      >
-        Add a listing <ArrowRight class="w-5 h-5" />
-      </button>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <RouterLink
+          to="/host/listings"
+          class="bg-primary text-white font-bold px-8 py-4 rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center justify-center gap-2"
+        >
+          My listings <ArrowRight class="w-5 h-5" />
+        </RouterLink>
+        <button
+          type="button"
+          class="border-2 border-gray-200 font-bold px-8 py-4 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center justify-center gap-2"
+          @click="startHosting"
+        >
+          Add a listing
+        </button>
+      </div>
     </section>
 
     <template v-else>

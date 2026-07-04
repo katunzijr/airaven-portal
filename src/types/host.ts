@@ -13,6 +13,7 @@ export interface HostProfile {
 
 export interface AvailabilityRange {
   id?: string;
+  listingId?: string;
   propertyId?: string;
   startDate: string;
   endDate?: string;
@@ -29,20 +30,47 @@ export interface CreateHostProfilePayload {
 export interface CreatePropertyPayload {
   type: PropertyType;
   location: Property['location'];
-  maxGuests: number;
-  bedrooms: number;
-  beds: number;
-  bathrooms: number;
-  amenities?: string[];
+  forceNew?: boolean;
 }
 
-export interface UpdateListingPayload {
+export interface UpdatePropertyDetailsPayload {
   title: string;
   description: string;
   images: string[];
-  price: number;
   checkIn?: string;
   checkOut?: string;
   cancellationPolicy?: string;
+}
+
+/** @deprecated alias */
+export type UpdateListingPayload = UpdatePropertyDetailsPayload;
+
+export interface CreateRoomListingPayload {
+  name: string;
+  description?: string;
+  price: number;
+  maxGuests: number;
+  bedrooms?: number;
+  beds?: number;
+  bathrooms?: number;
+  amenities?: string[];
+  images?: string[];
+  quantity?: number;
   instantBook?: boolean;
 }
+
+export interface UpdateRoomListingPayload {
+  name?: string;
+  description?: string;
+  price?: number;
+  maxGuests?: number;
+  bedrooms?: number;
+  beds?: number;
+  bathrooms?: number;
+  amenities?: string[];
+  images?: string[];
+  quantity?: number;
+  instantBook?: boolean;
+}
+
+export type { PropertyListing } from '@/types';

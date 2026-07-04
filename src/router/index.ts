@@ -27,22 +27,22 @@ const router = createRouter({
       meta: { title: 'Become a Host - Airaven' },
     },
     {
+      path: '/host/listings',
+      name: 'host-listings',
+      component: () => import('@/views/HostListingsView.vue'),
+      meta: { title: 'My Listings – Airaven', requiresAuth: true },
+    },
+    {
+      path: '/host/listings/:id',
+      name: 'host-listing-manage',
+      component: () => import('@/views/HostPropertyManageView.vue'),
+      meta: { title: 'Manage Listing – Airaven', requiresAuth: true },
+    },
+    {
       path: '/host/onboarding',
       name: 'host-onboarding',
       component: () => import('@/views/HostOnboardingView.vue'),
       meta: { title: 'Host Onboarding – Airaven', requiresAuth: true },
-    },
-    {
-      path: '/trips',
-      name: 'trips',
-      component: () => import('@/views/TripsView.vue'),
-      meta: { title: 'Trips & Experiences – Airaven' },
-    },
-    {
-      path: '/trips/:id',
-      name: 'trip-detail',
-      component: () => import('@/views/TripDetailView.vue'),
-      meta: { title: 'Experience – Airaven' },
     },
     {
       path: '/sign-in',

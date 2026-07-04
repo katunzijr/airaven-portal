@@ -3,8 +3,11 @@ import type {
   AvailabilityRange,
   CreateHostProfilePayload,
   CreatePropertyPayload,
+  CreateRoomListingPayload,
   HostProfile,
-  UpdateListingPayload,
+  PropertyListing,
+  UpdatePropertyDetailsPayload,
+  UpdateRoomListingPayload,
 } from '@/types/host';
 import { api, isApiConfigured } from '@/api/client';
 
@@ -41,6 +44,18 @@ export async function createHostProfile(payload: CreateHostProfilePayload): Prom
   return unwrap(api.post<ApiEnvelope<HostProfile>>('/hosts/me', payload));
 }
 
+export async function fetchHostProperties(): Promise<Property[]> {
+  assertApi();
+  return unwrap(api.get<ApiEnvelope<Property[]>>('/hosts/me/properties'));
+}
+
+export async function getHostProperty(propertyId: string): Promise<Property> {
+  assertApi();
+  return unwrap(
+    api.get<ApiEnvelope<Property>>(`/hosts/me/properties/${encodeURIComponent(propertyId)}`),
+  );
+}
+
 export async function createHostProperty(payload: CreatePropertyPayload): Promise<Property> {
   assertApi();
   return unwrap(api.post<ApiEnvelope<Property>>('/hosts/me/properties', payload));
@@ -48,12 +63,54 @@ export async function createHostProperty(payload: CreatePropertyPayload): Promis
 
 export async function updateHostListing(
   propertyId: string,
-  payload: UpdateListingPayload,
+  payload: UpdatePropertyDetailsPayload,
 ): Promise<Property> {
   assertApi();
   return unwrap(
-    api.patch<ApiEnvelope<Property>>(`/hosts/me/properties/${encodeURIComponent(propertyId)}/listing`, payload),
+    api.patch<ApiEnvelope<Property>>(`/hosts/me/properties/${encodeURIComponent(propertyId)}/listing`, {
+      ...payload,
+      price: 0,
+    }),
   );
+}
+
+export async function listRoomListings(propertyId: string): Promise<PropertyListing[]> {
+  assertApi();
+  return unwrap(
+    api.get<ApiEnvelope<PropertyListing[]>>(`/hosts/me/properties/${encodeURIComponent(propertyId)}/listings`),
+  );
+}
+
+export async function createRoomListing(
+  propertyId: string,
+  payload: CreateRoomListingPayload,
+): Promise<PropertyListing> {
+  assertApi();
+  return unwrap(
+    api.post<ApiEnvelope<PropertyListing>>(`/hosts/me/properties/${encodeURIComponent(propertyId)}/listings`, payload),
+  );
+}
+
+export async function updateRoomListing(
+  propertyId: string,
+  listingId: string,
+  payload: UpdateRoomListingPayload,
+): Promise<PropertyListing> {
+  assertApi();
+  return unwrap(
+    api.patch<ApiEnvelope<PropertyListing>>(
+      `/hosts/me/properties/${encodeURIComponent(propertyId)}/listings/${encodeURIComponent(listingId)}`,
+      payload,
+    ),
+  );
+}
+
+export async function deleteRoomListing(propertyId: string, listingId: string): Promise<void> {
+  assertApi();
+  const { data } = await api.delete<ApiEnvelope<unknown>>(
+    `/hosts/me/properties/${encodeURIComponent(propertyId)}/listings/${encodeURIComponent(listingId)}`,
+  );
+  if (!data.success) throw new Error(data.message ?? 'Failed to delete room type');
 }
 
 export async function setHostAvailability(
@@ -76,9 +133,13 @@ export async function publishHostListing(propertyId: string): Promise<Property> 
   );
 }
 
-export async function fetchPropertyAvailability(propertyId: string): Promise<AvailabilityRange[]> {
+export async function fetchPropertyAvailability(
+  propertyId: string,
+  listingId?: string,
+): Promise<AvailabilityRange[]> {
   assertApi();
+  const params = listingId ? { listingId } : undefined;
   return unwrap(
-    api.get<ApiEnvelope<AvailabilityRange[]>>(`/properties/${encodeURIComponent(propertyId)}/availability`),
+    api.get<ApiEnvelope<AvailabilityRange[]>>(`/properties/${encodeURIComponent(propertyId)}/availability`, { params }),
   );
 }

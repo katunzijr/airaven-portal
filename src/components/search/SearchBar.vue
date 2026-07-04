@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Search, MapPin, Calendar, Users, X } from 'lucide-vue-next'
 import { usePreferences } from '@/composables/usePreferences'
 
@@ -11,6 +11,7 @@ withDefaults(
   { variant: 'hero' },
 )
 
+const route = useRoute()
 const router = useRouter()
 const { t } = usePreferences()
 const location = ref('')
@@ -18,12 +19,28 @@ const checkIn = ref('')
 const checkOut = ref('')
 const guests = ref(1)
 
+function syncFromRoute() {
+  location.value = (route.query.location as string) || ''
+  checkIn.value = (route.query.checkIn as string) || ''
+  checkOut.value = (route.query.checkOut as string) || ''
+  guests.value = route.query.guests ? Number(route.query.guests) : 1
+}
+
+watch(() => route.query, syncFromRoute, { immediate: true, deep: true })
+
 function handleSearch() {
   const query: Record<string, string> = {}
-  if (location.value) query.location = location.value
+  if (location.value.trim()) query.location = location.value.trim()
   if (checkIn.value) query.checkIn = checkIn.value
   if (checkOut.value) query.checkOut = checkOut.value
   if (guests.value > 1) query.guests = String(guests.value)
+
+  // Preserve active filter params when re-searching from the search page
+  for (const key of ['type', 'priceMin', 'priceMax', 'instantBook', 'superhost', 'sortBy'] as const) {
+    const val = route.query[key]
+    if (typeof val === 'string' && val) query[key] = val
+  }
+
   router.push({ path: '/search', query })
 }
 </script>
@@ -40,6 +57,7 @@ function handleSearch() {
             type="text"
             :placeholder="t('search.destinations')"
             class="w-full pl-9 pr-8 py-3 bg-white/10 rounded-lg text-sm text-white placeholder-white/40 border border-white/20 focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+            @keyup.enter="handleSearch"
           />
           <button v-if="location" type="button" class="absolute right-2 top-1/2 -translate-y-1/2" @click="location = ''">
             <X class="w-4 h-4 text-white/40" />
@@ -84,7 +102,13 @@ function handleSearch() {
       <label class="block text-xs font-bold mb-1">{{ t('search.where') }}</label>
       <div class="relative">
         <MapPin class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-        <input v-model="location" type="text" :placeholder="t('search.destination')" class="w-full pl-9 py-2.5 bg-gray-50 rounded-lg text-sm border border-gray-200 focus:border-secondary outline-none" />
+        <input
+          v-model="location"
+          type="text"
+          :placeholder="t('search.destination')"
+          class="w-full pl-9 py-2.5 bg-gray-50 rounded-lg text-sm border border-gray-200 focus:border-secondary outline-none"
+          @keyup.enter="handleSearch"
+        />
       </div>
     </div>
     <div class="min-w-[140px]">

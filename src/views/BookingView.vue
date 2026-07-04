@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import type { Property } from '@/types'
+import type { Property, PropertyListing } from '@/types'
 import type { AvailabilityRange } from '@/types/host'
 import { fetchProperty, fetchPropertyAvailability, startBookingCheckout } from '@/api/catalog'
 import { isStayAvailable } from '@/lib/availabilityDates'
@@ -25,16 +25,25 @@ const checkOut = computed(() => (route.query.checkOut as string) || '')
 const guests = computed(() => Number(route.query.guests) || 1)
 const cancelled = computed(() => route.query.cancelled === '1')
 
+const listingId = computed(() => (route.query.listingId as string) || '')
+
+const selectedListing = computed((): PropertyListing | null => {
+  const p = property.value
+  if (!p?.listings?.length) return null
+  if (listingId.value) {
+    return p.listings.find((l) => l.id === listingId.value) ?? p.listings[0]
+  }
+  return p.listings[0]
+})
+
 async function loadProperty(id: string): Promise<void> {
   loading.value = true
   loadError.value = ''
   try {
-    const [prop, ranges] = await Promise.all([
-      fetchProperty(id),
-      fetchPropertyAvailability(id),
-    ])
+    const prop = await fetchProperty(id)
     property.value = prop
-    availability.value = ranges
+    const lid = listingId.value || prop.listings?.[0]?.id
+    availability.value = lid ? await fetchPropertyAvailability(id, lid) : []
   } catch (err) {
     property.value = null
     loadError.value = err instanceof Error ? err.message : 'Failed to load property'
@@ -65,31 +74,33 @@ const nights = computed(() => {
   )
 })
 
-const subtotal = computed(() => (property.value ? nights.value * property.value.price : 0))
+const subtotal = computed(() => (selectedListing.value ? nights.value * selectedListing.value.price : 0))
 const serviceFee = computed(() => Math.round(subtotal.value * 0.12))
 const total = computed(() => subtotal.value + serviceFee.value)
 
 const canPay = computed(
   () =>
-    property.value &&
+    selectedListing.value &&
     checkIn.value &&
     checkOut.value &&
     datesValid.value &&
     guests.value >= 1 &&
-    guests.value <= (property.value?.maxGuests ?? 1) &&
+    guests.value <= (selectedListing.value?.maxGuests ?? 1) &&
     agreed.value &&
     !paying.value,
 )
 
 async function handlePayWithPesapal() {
   const p = property.value
-  if (!p || !canPay.value) return
+  const listing = selectedListing.value
+  if (!p || !listing || !canPay.value) return
 
   paying.value = true
   payError.value = ''
   try {
     const result = await startBookingCheckout({
       propertyId: p.id,
+      listingId: listing.id,
       checkIn: checkIn.value,
       checkOut: checkOut.value,
       guests: guests.value,
@@ -145,7 +156,7 @@ async function handlePayWithPesapal() {
                 <p class="text-sm text-gray-400">{{ checkIn }} → {{ checkOut }}</p>
               </div>
               <RouterLink
-                :to="{ path: `/property/${property.id}`, query: { checkIn, checkOut, guests } }"
+                :to="{ path: `/property/${property.id}`, query: { listingId: listingId || selectedListing?.id, checkIn, checkOut, guests } }"
                 class="text-sm font-medium underline"
               >
                 Edit
@@ -157,7 +168,7 @@ async function handlePayWithPesapal() {
                 <p class="text-sm text-gray-400">{{ guests }} guest{{ guests !== 1 ? 's' : '' }}</p>
               </div>
               <RouterLink
-                :to="{ path: `/property/${property.id}`, query: { checkIn, checkOut, guests } }"
+                :to="{ path: `/property/${property.id}`, query: { listingId: listingId || selectedListing?.id, checkIn, checkOut, guests } }"
                 class="text-sm font-medium underline"
               >
                 Edit
@@ -230,6 +241,7 @@ async function handlePayWithPesapal() {
             <div class="flex-1">
               <p class="text-sm text-gray-400 capitalize">{{ property.type }}</p>
               <p class="font-medium text-sm">{{ property.title }}</p>
+              <p v-if="selectedListing" class="text-xs text-gray-500 mt-0.5">{{ selectedListing.name }}</p>
               <div class="flex items-center gap-1 mt-1">
                 <Star class="w-3.5 h-3.5 fill-foreground" />
                 <span class="text-sm">{{ property.rating }}</span>
@@ -249,7 +261,7 @@ async function handlePayWithPesapal() {
             <h3 class="font-semibold text-base">Price details</h3>
             <div class="flex justify-between">
               <span class="text-gray-400">
-                {{ formatMoney(property.price) }} x {{ nights }} night{{ nights !== 1 ? 's' : '' }}
+                {{ formatMoney(selectedListing?.price ?? property.price) }} x {{ nights }} night{{ nights !== 1 ? 's' : '' }}
               </span>
               <span>{{ formatMoney(subtotal) }}</span>
             </div>

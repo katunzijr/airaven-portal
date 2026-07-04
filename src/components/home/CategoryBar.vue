@@ -14,7 +14,8 @@ import {
   Waves,
   Mountain,
   Flame,
-  Compass,
+  Briefcase,
+  LandPlot,
 } from 'lucide-vue-next'
 import { categories } from '@/data'
 import { usePreferences } from '@/composables/usePreferences'
@@ -42,7 +43,8 @@ const iconMap: Record<string, Component> = {
   waves: Waves,
   mountain: Mountain,
   flame: Flame,
-  compass: Compass,
+  briefcase: Briefcase,
+  landplot: LandPlot,
 }
 
 const localizedCategories = computed(() =>

@@ -22,6 +22,24 @@ const dragOver = ref(false)
 const uploadedUrls = ref<string[]>([...props.modelValue])
 const coverUrl = ref(props.modelValue[0] ?? '')
 
+watch(
+  () => props.modelValue,
+  (urls) => {
+    if (pendingFiles.value.length) return
+    const next = [...urls]
+    if (!next.length) return
+    const same =
+      next.length === uploadedUrls.value.length &&
+      next.every((url, i) => url === uploadedUrls.value[i])
+    if (same) return
+    uploadedUrls.value = next
+    if (!coverUrl.value || !next.includes(coverUrl.value)) {
+      coverUrl.value = next[0]
+    }
+  },
+  { deep: true },
+)
+
 const urlInputs = ref<{ id: string; value: string }[]>([{ id: crypto.randomUUID(), value: '' }])
 
 const manualUrls = computed(() =>

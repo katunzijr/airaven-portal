@@ -18,11 +18,18 @@ const clerkEnabled = isClerkConfigured()
       {{ t('nav.becomeHost') }}
     </RouterLink>
   </template>
-  <RouterLink
-    v-else-if="clerkEnabled && hostChecked && isHost"
-    to="/host/onboarding"
-    class="hidden lg:block text-sm font-medium hover:bg-white/10 px-4 py-2 rounded-lg transition-colors"
-  >
-    {{ t('nav.addListing') }}
-  </RouterLink>
+  <template v-else-if="clerkEnabled && hostChecked && isHost">
+    <RouterLink
+      to="/host/listings"
+      class="hidden lg:block text-sm font-medium hover:bg-white/10 px-4 py-2 rounded-lg transition-colors"
+    >
+      {{ t('nav.myListings') }}
+    </RouterLink>
+    <RouterLink
+      to="/host/onboarding"
+      class="hidden lg:block text-sm font-medium hover:bg-white/10 px-4 py-2 rounded-lg transition-colors"
+    >
+      {{ t('nav.addListing') }}
+    </RouterLink>
+  </template>
 </template>

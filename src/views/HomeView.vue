@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { trips } from '@/data'
 import type { Property } from '@/types'
 import { fetchProperties } from '@/api/catalog'
 import { useIsHost } from '@/composables/useIsHost'
 import { usePreferences } from '@/composables/usePreferences'
 import CategoryBar from '@/components/home/CategoryBar.vue'
 import PropertyCard from '@/components/cards/PropertyCard.vue'
-import TripCard from '@/components/cards/TripCard.vue'
 import SearchBar from '@/components/search/SearchBar.vue'
 import { MapPin, Shield, Star, Clock } from 'lucide-vue-next'
 
@@ -31,28 +29,23 @@ onMounted(async () => {
 
 const filteredProperties = computed(() => {
   const cat = activeCategory.value
-  if (cat === 'all' || cat === 'trips') return properties.value
-  if (['beachfront', 'countryside', 'trending'].includes(cat)) {
-    return properties.value.filter((p) => p.tags.some((tag) => tag.toLowerCase() === cat))
-  }
+  if (cat === 'all') return properties.value
+
   return properties.value.filter((p) => p.type === cat)
 })
-
-const showTrips = computed(() => activeCategory.value === 'all' || activeCategory.value === 'trips')
 
 const sectionTitle = computed(() => {
   const cat = activeCategory.value
   if (cat === 'all') return t('home.popularStays')
-  if (cat === 'trips') return t('home.staysYouMightLike')
   return `${tc(cat)} ${t('home.staysSuffix')}`
 })
 
 const destinations = [
-  { city: 'Zanzibar', country: 'Tanzania', img: 'https://picsum.photos/seed/zanzibar/400/300', flag: '🇹🇿' },
-  { city: 'Nairobi', country: 'Kenya', img: 'https://picsum.photos/seed/nairobi/400/300', flag: '🇰🇪' },
-  { city: 'Dar es Salaam', country: 'Tanzania', img: 'https://picsum.photos/seed/dar/400/300', flag: '🇹🇿' },
-  { city: 'Arusha', country: 'Tanzania', img: 'https://picsum.photos/seed/arusha/400/300', flag: '🇹🇿' },
-  { city: 'Kigali', country: 'Rwanda', img: 'https://picsum.photos/seed/kigali/400/300', flag: '🇷🇼' },
+  { city: 'Zanzibar', country: 'Tanzania', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRU08gp4037xfX-NgjGf9iUU2b62Mc6LRuJWQRAcUGv-uoj3MO6u-SZWM&s=10', flag: '🇹🇿' },
+  { city: 'Nairobi', country: 'Kenya', img: 'https://images.contentstack.io/v3/assets/blt06f605a34f1194ff/blta6e0de21a01faae4/686e5f5b6cdcee1f9dc379dc/kenny-murgor-E_0kbeQbyV0-unsplash-HEADERMOBILE.jpg?fit=crop&auto=webp&quality=60&crop=smart&format=avif', flag: '🇰🇪' },
+  { city: 'Dar es Salaam', country: 'Tanzania', img: 'https://altezzatravel.com/upload/medialib/27f/b0qz1nq6npa9cybt68bj490mkhzgwz1e.webp', flag: '🇹🇿' },
+  { city: 'Arusha', country: 'Tanzania', img: 'https://i2.wp.com/foreverlostintravel.com/wp-content/uploads/2024/01/Arusha-Tanzania-Art-Gallery-scaled.jpg?fit=688%2C516&ssl=1', flag: '🇹🇿' },
+  { city: 'Kigali', country: 'Rwanda', img: 'https://www.safarisrwandasafari.com/wp-content/uploads/2023/04/illume_orig.jpg', flag: '🇷🇼' },
 ]
 </script>
 
@@ -146,19 +139,6 @@ const destinations = [
     </div>
     <div v-if="!loadingProperties && !propertiesError && filteredProperties.length === 0" class="text-center py-16">
       <p class="text-gray-400 text-lg">{{ t('home.noStays') }}</p>
-    </div>
-  </section>
-
-  <section v-if="showTrips" class="max-w-[1440px] mx-auto px-6 lg:px-10 pb-12">
-    <div class="flex items-end justify-between mb-6">
-      <div>
-        <h2 class="text-2xl font-bold">{{ t('home.experiences') }}</h2>
-        <p class="text-gray-400 text-sm mt-1">{{ t('home.experiencesDesc') }}</p>
-      </div>
-      <RouterLink to="/trips" class="text-sm font-medium text-primary hover:underline">{{ t('home.showAll') }}</RouterLink>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <TripCard v-for="trip in trips" :key="trip.id" :trip="trip" />
     </div>
   </section>
 

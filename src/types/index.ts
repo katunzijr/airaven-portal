@@ -1,6 +1,35 @@
-export type PropertyType = "house" | "apartment" | "room" | "hall" | "frame" | "villa" | "cabin" | "cottage";
+export type PropertyType =
+  | "house"
+  | "apartment"
+  | "room"
+  | "hall"
+  | "frame"
+  | "villa"
+  | "cabin"
+  | "cottage"
+  | "beachfront"
+  | "business"
+  | "plot";
 
-export type TripType = "adventure" | "cultural" | "food" | "nature" | "city" | "wellness";
+export interface PropertyListing {
+  id: string;
+  propertyId: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  maxGuests: number;
+  bedrooms: number;
+  beds: number;
+  bathrooms: number;
+  amenities: string[];
+  features: string[];
+  images: string[];
+  quantity: number;
+  sortOrder: number;
+  instantBook: boolean;
+  status: string;
+}
 
 export interface Property {
   id: string;
@@ -8,7 +37,10 @@ export interface Property {
   description: string;
   type: PropertyType;
   images: string[];
+  coverImages?: string[];
   price: number;
+  fromPrice?: number;
+  listingCount?: number;
   currency: string;
   rating: number;
   reviewCount: number;
@@ -36,34 +68,10 @@ export interface Property {
   checkOut: string;
   cancellationPolicy: string;
   instantBook: boolean;
+  listings?: PropertyListing[];
+  status?: string;
   canReview?: boolean;
   hasReviewed?: boolean;
-}
-
-export interface Trip {
-  id: string;
-  title: string;
-  description: string;
-  type: TripType;
-  images: string[];
-  price: number;
-  currency: string;
-  rating: number;
-  reviewCount: number;
-  duration: string;
-  location: {
-    city: string;
-    country: string;
-  };
-  host: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-  maxGroupSize: number;
-  includes: string[];
-  languages: string[];
-  isFavorite: boolean;
 }
 
 export interface Review {
@@ -98,10 +106,13 @@ export interface SearchFilters {
 export interface Booking {
   id: string;
   propertyId: string;
+  listingId?: string;
+  listing?: PropertyListing;
   property: Property;
   checkIn: string;
   checkOut: string;
   guests: number;
+  units?: number;
   totalPrice: number;
   currency?: string;
   status: "confirmed" | "pending" | "cancelled" | "completed";

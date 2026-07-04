@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { Show } from '@clerk/vue'
-import { Heart } from 'lucide-vue-next'
+import { CalendarDays } from 'lucide-vue-next'
 import { usePreferences } from '@/composables/usePreferences'
 
 const { t } = usePreferences()
@@ -10,11 +10,11 @@ const { t } = usePreferences()
 <template>
   <Show when="signed-in">
     <RouterLink
-      to="/wishlist"
+      to="/bookings"
       class="hidden sm:flex items-center gap-1.5 hover:bg-white/10 px-3 py-2 rounded-lg transition-colors text-sm font-medium"
     >
-      <Heart class="w-4 h-4 text-secondary" />
-      {{ t('nav.saved') }}
+      <CalendarDays class="w-4 h-4 text-secondary" />
+      {{ t('nav.bookings') }}
     </RouterLink>
   </Show>
 </template>

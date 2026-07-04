@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Search, Globe, Menu, Heart, CalendarDays } from 'lucide-vue-next'
+import { Show, SignOutButton, SignInButton, SignUpButton } from '@clerk/vue'
+import { Search, Menu, Heart, CalendarDays, User, Home, Plus, LogOut } from 'lucide-vue-next'
 import HeaderClerkAuth from '@/components/layout/HeaderClerkAuth.vue'
 import HeaderHostLink from '@/components/layout/HeaderHostLink.vue'
 import HeaderWishlistLink from '@/components/layout/HeaderWishlistLink.vue'
+import HeaderBookingsLink from '@/components/layout/HeaderBookingsLink.vue'
 import LocaleCurrencyMenu from '@/components/layout/LocaleCurrencyMenu.vue'
 import { usePreferences } from '@/composables/usePreferences'
 import { useIsHost } from '@/composables/useIsHost'
@@ -14,6 +16,10 @@ const mobileMenuOpen = ref(false)
 const clerkEnabled = isClerkConfigured()
 const { isHost, hostChecked } = useIsHost()
 const { t } = usePreferences()
+
+function closeMobileMenu(): void {
+  mobileMenuOpen.value = false
+}
 </script>
 
 <template>
@@ -37,14 +43,16 @@ const { t } = usePreferences()
           </RouterLink>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 sm:gap-2">
           <HeaderHostLink />
           <HeaderWishlistLink v-if="clerkEnabled" />
+          <HeaderBookingsLink v-if="clerkEnabled" />
           <LocaleCurrencyMenu />
 
           <HeaderClerkAuth v-if="clerkEnabled" />
 
           <button
+            v-if="clerkEnabled"
             type="button"
             class="flex items-center gap-2 bg-white/10 border border-white/20 rounded-lg px-3 py-2 hover:bg-white/20 transition-colors sm:hidden"
             @click="mobileMenuOpen = !mobileMenuOpen"
@@ -69,56 +77,104 @@ const { t } = usePreferences()
     </div>
 
     <div
-      v-if="mobileMenuOpen"
-      class="absolute right-6 top-16 bg-white text-foreground border border-gray-200 rounded-lg shadow-xl py-2 w-60 z-50"
+      v-if="mobileMenuOpen && clerkEnabled"
+      class="absolute right-6 top-16 bg-white text-foreground border border-gray-200 rounded-xl shadow-xl py-2 w-72 z-50 sm:hidden"
     >
-      <template v-if="clerkEnabled">
+      <Show when="signed-in">
         <RouterLink
           to="/profile"
-          class="block px-4 py-3 text-sm hover:bg-gray-50 font-medium"
-          @click="mobileMenuOpen = false"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50 font-medium"
+          @click="closeMobileMenu"
         >
+          <User class="w-4 h-4 text-gray-500" />
           {{ t('nav.profile') }}
         </RouterLink>
         <RouterLink
-          to="/wishlist"
-          class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
-          @click="mobileMenuOpen = false"
-        >
-          <Heart class="w-4 h-4 text-secondary" /> {{ t('nav.wishlist') }}
-        </RouterLink>
-        <RouterLink
           to="/bookings"
-          class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
-          @click="mobileMenuOpen = false"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="closeMobileMenu"
         >
-          <CalendarDays class="w-4 h-4 text-secondary" /> {{ t('nav.bookings') }}
+          <CalendarDays class="w-4 h-4 text-gray-500" />
+          {{ t('nav.bookings') }}
         </RouterLink>
         <RouterLink
-          to="/trips"
-          class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
-          @click="mobileMenuOpen = false"
+          to="/wishlist"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="closeMobileMenu"
         >
-          <Globe class="w-4 h-4 text-secondary" /> {{ t('nav.trips') }}
+          <Heart class="w-4 h-4 text-gray-500" />
+          {{ t('nav.wishlist') }}
         </RouterLink>
-        <hr class="my-2 border-gray-100" />
-      </template>
-      <RouterLink
-        v-if="!clerkEnabled || (hostChecked && !isHost)"
-        to="/host"
-        class="block px-4 py-3 text-sm hover:bg-gray-50"
-        @click="mobileMenuOpen = false"
-      >
-        {{ t('nav.becomeHost') }}
-      </RouterLink>
-      <RouterLink
-        v-else-if="clerkEnabled && hostChecked && isHost"
-        to="/host/onboarding"
-        class="block px-4 py-3 text-sm hover:bg-gray-50"
-        @click="mobileMenuOpen = false"
-      >
-        {{ t('nav.addListing') }}
-      </RouterLink>
+        <hr class="my-1 border-gray-100" />
+        <RouterLink
+          v-if="hostChecked && isHost"
+          to="/host/listings"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="closeMobileMenu"
+        >
+          <Home class="w-4 h-4 text-gray-500" />
+          {{ t('nav.hostDashboard') }}
+        </RouterLink>
+        <RouterLink
+          v-if="hostChecked && isHost"
+          to="/host/onboarding"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="closeMobileMenu"
+        >
+          <Plus class="w-4 h-4 text-gray-500" />
+          {{ t('nav.addListing') }}
+        </RouterLink>
+        <RouterLink
+          v-else-if="hostChecked"
+          to="/host"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="closeMobileMenu"
+        >
+          <Home class="w-4 h-4 text-gray-500" />
+          {{ t('nav.becomeHost') }}
+        </RouterLink>
+        <hr class="my-1 border-gray-100" />
+        <SignOutButton>
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50 text-left"
+            @click="closeMobileMenu"
+          >
+            <LogOut class="w-4 h-4 text-gray-500" />
+            {{ t('nav.signOut') }}
+          </button>
+        </SignOutButton>
+      </Show>
+
+      <Show when="signed-out">
+        <SignInButton mode="modal">
+          <button
+            type="button"
+            class="block w-full px-4 py-3 text-sm hover:bg-gray-50 text-left font-medium"
+            @click="closeMobileMenu"
+          >
+            {{ t('nav.login') }}
+          </button>
+        </SignInButton>
+        <SignUpButton mode="modal">
+          <button
+            type="button"
+            class="block w-full px-4 py-3 text-sm hover:bg-gray-50 text-left"
+            @click="closeMobileMenu"
+          >
+            {{ t('nav.signup') }}
+          </button>
+        </SignUpButton>
+        <hr class="my-1 border-gray-100" />
+        <RouterLink
+          to="/host"
+          class="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+          @click="closeMobileMenu"
+        >
+          <Home class="w-4 h-4 text-gray-500" />
+          {{ t('nav.becomeHost') }}
+        </RouterLink>
+      </Show>
     </div>
   </header>
 </template>

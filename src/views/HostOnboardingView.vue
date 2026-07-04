@@ -1,36 +1,48 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUser } from '@clerk/vue'
 import HostOnboardingShell from '@/components/host/HostOnboardingShell.vue'
-import HostPropertyStep, { type PropertyStepPayload } from '@/components/host/HostPropertyStep.vue'
+import HostPropertyStep from '@/components/host/HostPropertyStep.vue'
+import HostRoomTypesStep from '@/components/host/HostRoomTypesStep.vue'
 import HostListingPhotosStep from '@/components/host/HostListingPhotosStep.vue'
 import PhoneInput from '@/components/PhoneInput.vue'
 import { amenityLabels } from '@/lib/amenities'
-import { formatPriceDisplay, parsePriceDisplay } from '@/lib/priceInput'
 import { validatePhone } from '@/lib/phoneInput'
 import {
   createHostProfile,
   createHostProperty,
+  createRoomListing,
   getHostProfile,
   publishHostListing,
   setHostAvailability,
   updateHostListing,
+  updateRoomListing,
 } from '@/api/host'
 import { refreshHostStatus } from '@/composables/useIsHost'
 import { Check, ChevronRight, Loader2 } from 'lucide-vue-next'
+import type { PropertyType } from '@/types'
+import type { LocationValue } from '@/components/host/LocationMapPicker.vue'
 
-const TOTAL_STEPS = 5
+const TOTAL_STEPS = 6
 
 const router = useRouter()
+const route = useRoute()
 const { user } = useUser()
+
+const forceNewListing = computed(() => route.query.new === '1')
 
 const step = ref(1)
 const loading = ref(false)
 const error = ref('')
 const propertyId = ref('')
+const propertyType = ref<PropertyType>('house')
+const roomListingIds = ref<string[]>([])
+const photoListingIndex = ref(0)
 const propertyStepRef = ref<InstanceType<typeof HostPropertyStep> | null>(null)
-const photosStepRef = ref<InstanceType<typeof HostListingPhotosStep> | null>(null)
+const roomTypesStepRef = ref<InstanceType<typeof HostRoomTypesStep> | null>(null)
+const coverPhotosRef = ref<InstanceType<typeof HostListingPhotosStep> | null>(null)
+const roomPhotosRef = ref<InstanceType<typeof HostListingPhotosStep> | null>(null)
 
 const hostForm = ref({
   displayName: '',
@@ -38,18 +50,16 @@ const hostForm = ref({
   phone: '',
 })
 
-const listingForm = ref({
+const propertyForm = ref({
   title: '',
   description: '',
-  price: 500000,
   checkIn: '15:00',
   checkOut: '11:00',
   cancellationPolicy: 'Free cancellation within 48 hours',
-  instantBook: true,
 })
 
-const listingImages = ref<string[]>([])
-const priceDisplay = ref(formatPriceDisplay(500000))
+const coverImages = ref<string[]>([])
+const roomImages = ref<string[]>([])
 
 const availabilityForm = ref({
   startDate: '',
@@ -58,18 +68,18 @@ const availabilityForm = ref({
 
 const steps = [
   { id: 1, label: 'Host profile' },
-  { id: 2, label: 'Add property' },
-  { id: 3, label: 'Create listing' },
-  { id: 4, label: 'Add photos' },
-  { id: 5, label: 'Set availability' },
+  { id: 2, label: 'Property location' },
+  { id: 3, label: 'Property details' },
+  { id: 4, label: 'Unit types' },
+  { id: 5, label: 'Photos' },
+  { id: 6, label: 'Availability' },
 ]
 
 const stepTitle = computed(() => steps.find((s) => s.id === step.value)?.label ?? '')
 
 onMounted(async () => {
   if (!hostForm.value.displayName) {
-    hostForm.value.displayName =
-      user.value?.fullName ?? user.value?.firstName ?? ''
+    hostForm.value.displayName = user.value?.fullName ?? user.value?.firstName ?? ''
   }
   try {
     const profile = await getHostProfile()
@@ -83,13 +93,6 @@ onMounted(async () => {
     // first-time host
   }
 })
-
-function onPriceInput(event: Event): void {
-  const raw = (event.target as HTMLInputElement).value
-  const parsed = parsePriceDisplay(raw)
-  listingForm.value.price = parsed
-  priceDisplay.value = parsed ? formatPriceDisplay(parsed) : ''
-}
 
 async function runStep(action: () => Promise<void>): Promise<void> {
   error.value = ''
@@ -126,18 +129,21 @@ async function submitHostProfile(): Promise<void> {
   })
 }
 
-async function submitProperty(payload: PropertyStepPayload): Promise<void> {
+async function submitProperty(payload: { type: PropertyType; location: LocationValue }): Promise<void> {
   await runStep(async () => {
+    if (propertyId.value) {
+      propertyType.value = payload.type
+      step.value = 3
+      return
+    }
+
     const property = await createHostProperty({
       type: payload.type,
       location: payload.location,
-      maxGuests: payload.maxGuests,
-      bedrooms: payload.bedrooms,
-      beds: payload.beds,
-      bathrooms: payload.bathrooms,
-      amenities: amenityLabels(payload.amenities),
+      forceNew: forceNewListing.value,
     })
     propertyId.value = property.id
+    propertyType.value = payload.type
     step.value = 3
   })
 }
@@ -146,39 +152,98 @@ function triggerPropertySubmit(): void {
   propertyStepRef.value?.handleSubmit()
 }
 
-function submitListingDetails(): void {
+function submitPropertyDetails(): void {
   error.value = ''
-  if (!listingForm.value.title.trim() || !listingForm.value.description.trim()) {
+  if (!propertyForm.value.title.trim() || !propertyForm.value.description.trim()) {
     error.value = 'Title and description are required'
-    return
-  }
-  if (listingForm.value.price <= 0) {
-    error.value = 'Enter a valid price'
     return
   }
   step.value = 4
 }
 
-async function submitPhotos(): Promise<void> {
-  photosStepRef.value?.syncUrlImages()
-  const photoValidation = photosStepRef.value?.validate()
+async function submitRoomTypes(): Promise<void> {
+  const validation = roomTypesStepRef.value?.validate()
+  if (!validation?.ok) {
+    error.value = validation?.message ?? 'Fix unit type details'
+    return
+  }
+
+  await runStep(async () => {
+    const drafts = roomTypesStepRef.value?.getPayload() ?? []
+    const ids: string[] = []
+
+    for (const room of drafts) {
+      const listing = await createRoomListing(propertyId.value, {
+        name: room.name,
+        description: room.description,
+        price: room.price,
+        maxGuests: room.maxGuests,
+        bedrooms: room.bedrooms,
+        beds: room.beds,
+        bathrooms: room.bathrooms,
+        amenities: amenityLabels(room.amenities),
+        instantBook: room.instantBook,
+      })
+      ids.push(listing.id)
+    }
+
+    await updateHostListing(propertyId.value, {
+      title: propertyForm.value.title,
+      description: propertyForm.value.description,
+      images: [],
+      checkIn: propertyForm.value.checkIn,
+      checkOut: propertyForm.value.checkOut,
+      cancellationPolicy: propertyForm.value.cancellationPolicy,
+    })
+
+    roomListingIds.value = ids
+    photoListingIndex.value = 0
+    roomImages.value = []
+    step.value = 5
+  })
+}
+
+async function submitCoverPhotos(): Promise<void> {
+  coverPhotosRef.value?.syncUrlImages()
+  const photoValidation = coverPhotosRef.value?.validate()
   if (!photoValidation?.ok) {
-    error.value = photoValidation?.message ?? 'Add at least one photo'
+    error.value = photoValidation?.message ?? 'Add at least one cover photo'
     return
   }
 
   await runStep(async () => {
     await updateHostListing(propertyId.value, {
-      title: listingForm.value.title,
-      description: listingForm.value.description,
-      images: listingImages.value,
-      price: listingForm.value.price,
-      checkIn: listingForm.value.checkIn,
-      checkOut: listingForm.value.checkOut,
-      cancellationPolicy: listingForm.value.cancellationPolicy,
-      instantBook: listingForm.value.instantBook,
+      title: propertyForm.value.title,
+      description: propertyForm.value.description,
+      images: coverImages.value,
+      checkIn: propertyForm.value.checkIn,
+      checkOut: propertyForm.value.checkOut,
+      cancellationPolicy: propertyForm.value.cancellationPolicy,
     })
-    step.value = 5
+    photoListingIndex.value = 0
+    roomImages.value = []
+  })
+}
+
+async function submitRoomPhotos(): Promise<void> {
+  roomPhotosRef.value?.syncUrlImages()
+  const photoValidation = roomPhotosRef.value?.validate()
+  if (!photoValidation?.ok) {
+    error.value = photoValidation?.message ?? 'Add at least one photo for this unit type'
+    return
+  }
+
+  const listingId = roomListingIds.value[photoListingIndex.value]
+  await runStep(async () => {
+    await updateRoomListing(propertyId.value, listingId, { images: roomImages.value })
+
+    if (photoListingIndex.value < roomListingIds.value.length - 1) {
+      photoListingIndex.value += 1
+      roomImages.value = []
+      return
+    }
+
+    step.value = 6
   })
 }
 
@@ -218,6 +283,7 @@ async function publishListing(): Promise<void> {
     await saveAvailabilityRanges(true)
   })
 }
+
 </script>
 
 <template>
@@ -251,61 +317,55 @@ async function publishListing(): Promise<void> {
       v-show="step === 2"
       ref="propertyStepRef"
       :loading="loading"
-      :error="error"
       :active="step === 2"
       @submit="submitProperty"
     />
 
-    <form v-show="step === 3" id="host-listing-form" class="max-w-2xl space-y-4" @submit.prevent="submitListingDetails">
+    <form v-show="step === 3" id="host-property-form" class="max-w-2xl space-y-4" @submit.prevent="submitPropertyDetails">
       <label class="block">
-        <span class="text-sm font-medium">Listing title</span>
-        <input v-model="listingForm.title" required class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
+        <span class="text-sm font-medium">Property name</span>
+        <input v-model="propertyForm.title" required class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" placeholder="Nungwi Beach Resort" />
       </label>
       <label class="block">
         <span class="text-sm font-medium">Description</span>
-        <textarea v-model="listingForm.description" required rows="4" class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
-      </label>
-      <label class="block">
-        <span class="text-sm font-medium">Price per night (TZS)</span>
-        <input
-          :value="priceDisplay"
-          type="text"
-          inputmode="numeric"
-          required
-          class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3"
-          placeholder="500,000"
-          @input="onPriceInput"
-        />
+        <textarea v-model="propertyForm.description" required rows="4" class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
       </label>
       <div class="grid grid-cols-2 gap-4">
         <label class="block">
           <span class="text-sm font-medium">Check-in time</span>
-          <input v-model="listingForm.checkIn" type="time" required class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
+          <input v-model="propertyForm.checkIn" type="time" required class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
         </label>
         <label class="block">
           <span class="text-sm font-medium">Check-out time</span>
-          <input v-model="listingForm.checkOut" type="time" required class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
+          <input v-model="propertyForm.checkOut" type="time" required class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
         </label>
       </div>
       <label class="block">
-        <span class="text-sm font-medium">House rules / cancellation policy</span>
-        <textarea v-model="listingForm.cancellationPolicy" rows="2" class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
-      </label>
-      <label class="inline-flex items-center gap-2 text-sm">
-        <input v-model="listingForm.instantBook" type="checkbox" class="rounded" />
-        Enable instant book
+        <span class="text-sm font-medium">Cancellation policy</span>
+        <textarea v-model="propertyForm.cancellationPolicy" rows="2" class="mt-1 w-full border border-gray-200 rounded-lg px-4 py-3" />
       </label>
     </form>
 
-    <HostListingPhotosStep
-      v-show="step === 4"
-      ref="photosStepRef"
-      v-model="listingImages"
-    />
+    <HostRoomTypesStep v-show="step === 4" ref="roomTypesStepRef" :property-type="propertyType" />
 
-    <div v-show="step === 5" class="max-w-2xl space-y-4">
+    <div v-show="step === 5" class="max-w-2xl space-y-6">
+      <div v-if="coverImages.length === 0">
+        <h2 class="text-lg font-semibold mb-1">Cover photos</h2>
+        <p class="text-sm text-gray-500 mb-4">Photos shown on search results and the top of your property page.</p>
+        <HostListingPhotosStep ref="coverPhotosRef" v-model="coverImages" />
+      </div>
+      <div v-else>
+        <h2 class="text-lg font-semibold mb-1">
+          Unit photos ({{ photoListingIndex + 1 }} / {{ roomListingIds.length }})
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">Add photos for this unit type.</p>
+        <HostListingPhotosStep ref="roomPhotosRef" v-model="roomImages" />
+      </div>
+    </div>
+
+    <div v-show="step === 6" class="max-w-2xl space-y-4">
       <p class="text-sm text-gray-500">
-        Set when guests can book. Leave "Available until" empty to save a draft — we'll assume open availability for one year.
+        Set when guests can book. This applies to all unit types. Leave "Available until" empty for open availability up to one year.
       </p>
       <div class="grid grid-cols-2 gap-4">
         <label class="block">
@@ -322,12 +382,7 @@ async function publishListing(): Promise<void> {
     <template #footer>
       <template v-if="step === 1">
         <span />
-        <button
-          type="submit"
-          form="host-profile-form"
-          :disabled="loading"
-          class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
-        >
+        <button type="submit" form="host-profile-form" :disabled="loading" class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60">
           <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
           <ChevronRight v-if="!loading" class="w-4 h-4" />
           Continue
@@ -336,12 +391,7 @@ async function publishListing(): Promise<void> {
 
       <template v-else-if="step === 2">
         <span />
-        <button
-          type="button"
-          class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
-          :disabled="loading"
-          @click="triggerPropertySubmit"
-        >
+        <button type="button" class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60" :disabled="loading" @click="triggerPropertySubmit">
           <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
           Continue
         </button>
@@ -349,11 +399,7 @@ async function publishListing(): Promise<void> {
 
       <template v-else-if="step === 3">
         <span />
-        <button
-          type="submit"
-          form="host-listing-form"
-          class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
-        >
+        <button type="submit" form="host-property-form" class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2">
           <ChevronRight class="w-4 h-4" />
           Continue
         </button>
@@ -361,12 +407,7 @@ async function publishListing(): Promise<void> {
 
       <template v-else-if="step === 4">
         <span />
-        <button
-          type="button"
-          class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
-          :disabled="loading"
-          @click="submitPhotos"
-        >
+        <button type="button" class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60" :disabled="loading" @click="submitRoomTypes">
           <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
           <ChevronRight v-if="!loading" class="w-4 h-4" />
           Continue
@@ -374,23 +415,39 @@ async function publishListing(): Promise<void> {
       </template>
 
       <template v-else-if="step === 5">
+        <span />
         <button
+          v-if="coverImages.length === 0"
           type="button"
-          class="text-sm font-medium text-gray-600 hover:text-primary px-4 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-60"
+          class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
           :disabled="loading"
-          @click="saveDraft"
-        >
-          Save draft
-        </button>
-        <button
-          type="button"
-          class="bg-accent text-primary font-bold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
-          :disabled="loading"
-          @click="publishListing"
+          @click="submitCoverPhotos"
         >
           <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
+          <ChevronRight v-if="!loading" class="w-4 h-4" />
+          Continue
+        </button>
+        <button
+          v-else
+          type="button"
+          class="bg-primary text-white font-semibold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
+          :disabled="loading"
+          @click="submitRoomPhotos"
+        >
+          <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
+          <ChevronRight v-if="!loading" class="w-4 h-4" />
+          {{ photoListingIndex < roomListingIds.length - 1 ? 'Next unit' : 'Continue' }}
+        </button>
+      </template>
+
+      <template v-else-if="step === 6">
+        <button type="button" class="text-sm font-medium text-gray-600 hover:text-primary px-4 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-60" :disabled="loading" @click="saveDraft">
+          Save draft
+        </button>
+        <button type="button" class="bg-accent text-primary font-bold px-8 py-3 rounded-lg inline-flex items-center gap-2 disabled:opacity-60" :disabled="loading" @click="publishListing">
+          <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
           <Check v-if="!loading" class="w-4 h-4" />
-          Publish listing
+          Publish
         </button>
       </template>
     </template>

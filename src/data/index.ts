@@ -1,4 +1,4 @@
-import type { Property, Trip, Review, Category, User, Booking } from '@/types'
+import type { Property, Review, Category, User, Booking } from '@/types'
 
 export const categories: Category[] = [
   { id: "1", name: "All", icon: "grid", slug: "all" },
@@ -11,9 +11,8 @@ export const categories: Category[] = [
   { id: "8", name: "Cabins", icon: "trees", slug: "cabin" },
   { id: "9", name: "Cottages", icon: "fence", slug: "cottage" },
   { id: "10", name: "Beachfront", icon: "waves", slug: "beachfront" },
-  { id: "11", name: "Countryside", icon: "mountain", slug: "countryside" },
-  { id: "12", name: "Trending", icon: "flame", slug: "trending" },
-  { id: "13", name: "Trips", icon: "compass", slug: "trips" },
+  { id: "11", name: "Business spaces", icon: "briefcase", slug: "business" },
+  { id: "12", name: "Plots", icon: "landplot", slug: "plot" },
 ];
 
 const IMG = (idx: number) =>
@@ -546,169 +545,6 @@ export const properties: Property[] = [
     checkOut: "11:00",
     cancellationPolicy: "Flexible - Full refund 24 hours before",
     instantBook: true,
-  },
-];
-
-export const trips: Trip[] = [
-  {
-    id: "trip-1",
-    title: "Sunrise Trek on Mount Kilimanjaro",
-    description:
-      "Join a guided sunrise trek through Kilimanjaro's rainforest zone to the Mandara Hut viewpoint. Trek through ancient montane forest, spot Colobus monkeys, and watch the sun rise over the East African plains. Hot chai and Tanzanian snacks included.",
-    type: "adventure",
-    images: [IMG(61), IMG(62), IMG(63)],
-    price: 310000,
-    currency: "TZS",
-    rating: 4.98,
-    reviewCount: 167,
-    duration: "6 hours",
-    location: { city: "Moshi", country: "Tanzania" },
-    host: {
-      id: "host-t1",
-      name: "Hassan Kilimbo",
-      avatar: "https://i.pravatar.cc/150?img=50",
-    },
-    maxGroupSize: 12,
-    includes: [
-      "Professional guide",
-      "Hot chai & Tanzanian snacks",
-      "Safety equipment",
-      "Photos",
-    ],
-    languages: ["English", "Swahili"],
-    isFavorite: false,
-  },
-  {
-    id: "trip-2",
-    title: "Zanzibar Spice & Street Food Tour",
-    description:
-      "Discover the hidden flavours of Zanzibar's legendary spice trade. Visit 8 local food vendors, taste 15+ dishes including pilau, urojo soup, and Zanzibar pizza. Learn the stories behind the island's iconic flavours. Vegetarian options available.",
-    type: "food",
-    images: [IMG(64), IMG(65), IMG(66)],
-    price: 145000,
-    currency: "TZS",
-    rating: 4.95,
-    reviewCount: 432,
-    duration: "4 hours",
-    location: { city: "Stone Town, Zanzibar", country: "Tanzania" },
-    host: {
-      id: "host-t2",
-      name: "Safia Juma",
-      avatar: "https://i.pravatar.cc/150?img=55",
-    },
-    maxGroupSize: 10,
-    includes: ["All food tastings", "Drinks", "Local guide", "Recipe booklet"],
-    languages: ["English", "Swahili"],
-    isFavorite: true,
-  },
-  {
-    id: "trip-3",
-    title: "Stone Town Cultural & Heritage Walk",
-    description:
-      "Walk through 1,200 years of Swahili, Arab, Persian, and colonial history in Stone Town. Visit the Old Fort, slave market memorial, Freddie Mercury's birthplace, and Darajani market. Includes a traditional Swahili cooking demonstration.",
-    type: "cultural",
-    images: [IMG(67), IMG(68), IMG(69)],
-    price: 220000,
-    currency: "TZS",
-    rating: 4.93,
-    reviewCount: 289,
-    duration: "5 hours",
-    location: { city: "Stone Town, Zanzibar", country: "Tanzania" },
-    host: {
-      id: "host-t3",
-      name: "Abdallah Omar",
-      avatar: "https://i.pravatar.cc/150?img=60",
-    },
-    maxGroupSize: 8,
-    includes: [
-      "Site entries",
-      "Swahili cooking demo",
-      "Transportation",
-      "Cultural guide",
-    ],
-    languages: ["English", "Swahili", "Arabic"],
-    isFavorite: false,
-  },
-  {
-    id: "trip-4",
-    title: "Safari Game Drive in Serengeti",
-    description:
-      "Experience the magic of the African savanna on a full-day safari. Spot the Big Five, watch wildebeest migrations, and enjoy a bush lunch under acacia trees.",
-    type: "nature",
-    images: [IMG(70), IMG(71), IMG(72)],
-    price: 650000,
-    currency: "TZS",
-    rating: 4.99,
-    reviewCount: 98,
-    duration: "Full day",
-    location: { city: "Serengeti", country: "Tanzania" },
-    host: {
-      id: "host-t4",
-      name: "Joseph Maasai",
-      avatar: "https://i.pravatar.cc/150?img=65",
-    },
-    maxGroupSize: 6,
-    includes: [
-      "4x4 vehicle",
-      "Park fees",
-      "Bush lunch",
-      "Professional guide",
-      "Binoculars",
-    ],
-    languages: ["English", "Swahili"],
-    isFavorite: false,
-  },
-  {
-    id: "trip-5",
-    title: "Dhow Sunset Cruise from Zanzibar",
-    description:
-      "Sail into the Zanzibar sunset aboard a traditional wooden dhow. Watch the sky turn gold over the Indian Ocean, anchor at a sandbar for a swim, and enjoy fresh grilled seafood and chilled cocktails on the open water.",
-    type: "city",
-    images: [IMG(73), IMG(74), IMG(75)],
-    price: 250000,
-    currency: "TZS",
-    rating: 4.89,
-    reviewCount: 215,
-    duration: "3.5 hours",
-    location: { city: "Zanzibar Town", country: "Tanzania" },
-    host: {
-      id: "host-t5",
-      name: "Hamisi Bahari",
-      avatar: "https://i.pravatar.cc/150?img=70",
-    },
-    maxGroupSize: 14,
-    includes: ["Grilled seafood", "Cocktails & drinks", "Dhow captain"],
-    languages: ["English", "Swahili"],
-    isFavorite: false,
-  },
-  {
-    id: "trip-6",
-    title: "Yoga & Wellness Retreat in Paje, Zanzibar",
-    description:
-      "Rejuvenate with a full-day wellness experience on Zanzibar's windswept east coast. Sunrise beach yoga, sound healing, organic Swahili lunch, a traditional seaweed bath, and a kite-surfing taster on the shallows of Paje.",
-    type: "wellness",
-    images: [IMG(76), IMG(77), IMG(78)],
-    price: 350000,
-    currency: "TZS",
-    rating: 4.94,
-    reviewCount: 173,
-    duration: "8 hours",
-    location: { city: "Paje, Zanzibar", country: "Tanzania" },
-    host: {
-      id: "host-t6",
-      name: "Amali Mjumbe",
-      avatar: "https://i.pravatar.cc/150?img=32",
-    },
-    maxGroupSize: 10,
-    includes: [
-      "Yoga mats",
-      "Organic Swahili lunch",
-      "Seaweed bath",
-      "Kite-surf taster",
-      "Sound healing",
-    ],
-    languages: ["English", "Swahili"],
-    isFavorite: true,
   },
 ];
 

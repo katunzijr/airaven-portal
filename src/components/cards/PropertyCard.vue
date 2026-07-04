@@ -75,7 +75,8 @@ async function handleSave(event: Event): Promise<void> {
         {{ property.bathrooms }} {{ property.bathrooms !== 1 ? t('property.bathrooms') : t('property.bathroom') }}
       </p>
       <p class="text-sm mt-1">
-        <span class="font-bold text-primary">{{ formatMoney(property.price) }}</span>
+        <span v-if="(property.listingCount ?? property.listings?.length ?? 0) > 1" class="text-gray-400">From </span>
+        <span class="font-bold text-primary">{{ formatMoney(property.fromPrice ?? property.price) }}</span>
         <span class="text-gray-400">{{ t('common.perNight') }}</span>
       </p>
     </div>
